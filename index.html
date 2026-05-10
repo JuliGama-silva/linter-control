@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Linter Control</title>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg:      #0f1117;
+      --surface: #1a1d27;
+      --card:    #22263a;
+      --border:  #2e3250;
+      --accent:  #BA7517;
+      --accent2: #FAC775;
+      --green:   #3B6D11;
+      --green2:  #97C459;
+      --red:     #A32D2D;
+      --red2:    #F09595;
+      --blue:    #185FA5;
+      --blue2:   #85B7EB;
+      --text:    #eef0f7;
+      --muted:   #7a7f9a;
+      --radius:  12px;
+      --font:    'Segoe UI', system-ui, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overscroll-behavior: none;
+    }
+
+    /* ── UTILIDADES ── */
+    .hidden { display: none !important; }
+    input, select, button { font-family: var(--font); }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .login-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 24px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .login-logo .icon {
+      width: 60px; height: 60px;
+      background: var(--accent);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 28px;
+    }
+    .login-logo h1 { font-size: 20px; font-weight: 700; color: var(--accent2); letter-spacing: 1px; }
+    .login-logo p  { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; }
+    .field input {
+      width: 100%;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+
+    .btn { cursor: pointer; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; padding: 13px 20px; transition: opacity .15s, background .15s; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-full { width: 100%; }
+    .btn-accent  { background: var(--accent);  color: #0f1117; }
+    .btn-accent:hover:not(:disabled)  { background: var(--accent2); }
+    .btn-green   { background: var(--green);   color: #fff; }
+    .btn-green:hover:not(:disabled)   { background: var(--green2); color: #0f1117; }
+    .btn-red     { background: var(--red);     color: #fff; }
+    .btn-red:hover:not(:disabled)     { background: var(--red2); color: #0f1117; }
+    .btn-ghost   { background: var(--card); border: 1px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+    .alert { border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; }
+    .alert-err { background: #A32D2D22; border: 1px solid #A32D2D44; color: var(--red2); }
+    .alert-ok  { background: #3B6D1122; border: 1px solid #3B6D1144; color: var(--green2); }
+
+    /* ── APP SHELL ── */
+    #app-screen { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* TOPBAR */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .topbar-icon { width: 34px; height: 34px; background: var(--accent); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+    .topbar-title { font-size: 16px; font-weight: 700; color: var(--accent2); }
+    .topbar-user  { font-size: 11px; color: var(--muted); }
+
+    /* NAV */
+    .nav-bar {
+      display: flex;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 10px 4px 14px;
+      font-size: 11px; color: var(--muted);
+      background: none; border: none; cursor: pointer;
+      transition: color .15s;
+    }
+    .nav-item .nav-icon { font-size: 22px; margin-bottom: 3px; display: block; }
+    .nav-item.active { color: var(--accent); font-weight: 700; }
+
+    /* CONTENT */
+    .content { flex: 1; padding: 18px 16px 100px; max-width: 600px; margin: 0 auto; width: 100%; }
+
+    /* SECTION HEADER */
+    .sec-header { margin-bottom: 16px; }
+    .sec-header h2 { font-size: 18px; font-weight: 700; }
+    .sec-header p  { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+    /* LEGEND */
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+    /* WAREHOUSE MAP */
+    .warehouse-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      overflow-x: auto;
+    }
+    .warehouse-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .bloco-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 6px 10px;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      cursor: pointer;
+      transition: transform .1s, border-color .15s;
+      position: relative;
+    }
+    .bloco-card:hover { transform: scale(1.04); }
+    .bloco-card.selected { box-shadow: 0 0 0 2px var(--accent2); }
+    .bloco-num   { font-size: 20px; font-weight: 800; }
+    .bloco-label { font-size: 9px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+    .bloco-qty   { font-size: 10px; font-weight: 700; }
+    .bloco-bar-wrap { width: 100%; background: var(--border); border-radius: 4px; height: 4px; margin-top: 2px; }
+    .bloco-bar    { height: 100%; border-radius: 4px; transition: width .3s; }
+
+    /* PANEL */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      margin-top: 16px;
+    }
+    .panel-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .panel-title { font-size: 16px; font-weight: 700; }
+    .panel-sub   { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    .prog-wrap { background: var(--border); border-radius: 6px; height: 8px; margin-bottom: 14px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 6px; transition: width .4s; }
+
+    .action-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .action-tab {
+      flex: 1; padding: 8px 4px; font-size: 12px; font-weight: 700;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; cursor: pointer; color: var(--muted);
+      transition: all .15s; text-align: center;
+    }
+    .action-tab.active { background: var(--accent); color: #0f1117; border-color: var(--accent); }
+
+    /* LOTES LIST */
+    .lote-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+      cursor: pointer; transition: border-color .15s;
+    }
+    .lote-row:hover { border-color: var(--accent); }
+    .lote-row.selected { border-color: var(--accent); background: #BA751722; }
+    .lote-name  { font-size: 14px; font-weight: 700; }
+    .lote-date  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .lote-fardos { font-size: 18px; font-weight: 800; color: var(--accent2); }
+
+    /* FORMS */
+    .form-field { margin-bottom: 12px; }
+    .form-field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; }
+    .form-field input, .form-field select {
+      width: 100%; background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 10px; color: var(--text); padding: 12px 14px; font-size: 15px;
+      outline: none; transition: border-color .2s;
+    }
+    .form-field input:focus, .form-field select:focus { border-color: var(--accent); }
+    .form-field select option { background: var(--bg); }
+
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 12px; }
+    .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-value { font-size: 28px; font-weight: 800; }
+    .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* LOTE SUMMARY */
+    .lote-sum-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    }
+    .lote-sum-blocos { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* HISTÓRICO */
+    .hist-search { width: 100%; background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); padding: 11px 14px; font-size: 14px; outline: none; margin-bottom: 14px; }
+    .hist-search:focus { border-color: var(--accent); }
+    .hist-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 11px 14px; margin-bottom: 7px;
+    }
+    .badge { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 5px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+    .badge-in  { background: #3B6D1144; color: var(--green2); border: 1px solid #3B6D1166; }
+    .badge-out { background: #A32D2D44; color: var(--red2);   border: 1px solid #A32D2D66; }
+    .hist-lote { font-size: 13px; font-weight: 700; }
+    .hist-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .hist-qty  { font-size: 17px; font-weight: 800; }
+
+    /* ADMIN */
+    .user-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    }
+    .role-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 5px; letter-spacing: 1px; text-transform: uppercase; }
+    .role-admin { background: #BA751733; color: var(--accent2); border: 1px solid #BA751766; }
+    .role-op    { background: #185FA533; color: var(--blue2);   border: 1px solid #185FA566; }
+
+    /* LOADING SPINNER */
+    .spinner-wrap { display: flex; align-items: center; justify-content: center; padding: 40px; }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-msg { text-align: center; color: var(--muted); font-size: 13px; padding: 32px; }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    /* SECTION TITLE */
+    .sec-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 20px;
+      font-size: 13px; font-weight: 600;
+      z-index: 999; pointer-events: none;
+      opacity: 0; transition: opacity .3s;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+    #toast.ok  { border-color: var(--green2); color: var(--green2); }
+    #toast.err { border-color: var(--red2);   color: var(--red2); }
+  </style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══════════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="icon">🌾</div>
+      <h1>LINTER CONTROL</h1>
+      <p>Sistema de controle de fardos</p>
+    </div>
+    <div id="login-err" class="alert alert-err hidden"></div>
+    <div class="field">
+      <label>Usuário</label>
+      <input id="li-user" type="text" placeholder="ex: admin" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input id="li-pass" type="password" placeholder="••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-accent btn-full" id="btn-login">Entrar</button>
+  </div>
+</div>
+
+<!-- ══ APP ═════════════════════════════════════════════════════════ -->
+<div id="app-screen" class="hidden">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-icon">🌾</div>
+      <div>
+        <div class="topbar-title">Linter Control</div>
+        <div class="topbar-user" id="topbar-user">—</div>
+      </div>
+    </div>
+    <button class="btn btn-ghost" id="btn-logout" style="padding:7px 14px;font-size:13px;">Sair</button>
+  </div>
+
+  <!-- CONTENT AREAS -->
+  <div class="content">
+    <!-- MAPA -->
+    <div id="tab-mapa">
+      <div class="sec-header">
+        <h2>Mapa do armazém</h2>
+        <p>Toque em um bloco para gerenciar</p>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#97C459"></div>Baixo (&lt;50%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#EF9F27"></div>Médio (50–84%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#F09595"></div>Cheio (≥85%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#5F5E5A"></div>Vazio</div>
+      </div>
+      <div class="warehouse-wrap">
+        <div class="warehouse-grid" id="warehouse-grid"></div>
+      </div>
+      <div id="bloco-panel" class="hidden"></div>
+    </div>
+
+    <!-- RESUMO -->
+    <div id="tab-resumo" class="hidden">
+      <div class="sec-header"><h2>Resumo do estoque</h2></div>
+      <div id="resumo-content"></div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="tab-historico" class="hidden">
+      <div class="sec-header"><h2>Histórico de movimentações</h2></div>
+      <input class="hist-search" id="hist-search" placeholder="Buscar por lote ou bloco…" />
+      <div id="historico-list"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="tab-admin" class="hidden">
+      <div class="sec-header"><h2>Administração</h2><p>Gestão de usuários</p></div>
+      <div id="admin-content"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav-bar">
+    <button class="nav-item active" data-tab="mapa">
+      <span class="nav-icon">🗺️</span>Mapa
+    </button>
+    <button class="nav-item" data-tab="resumo">
+      <span class="nav-icon">📊</span>Resumo
+    </button>
+    <button class="nav-item" data-tab="historico">
+      <span class="nav-icon">📋</span>Histórico
+    </button>
+    <button class="nav-item" id="nav-admin" data-tab="admin">
+      <span class="nav-icon">⚙️</span>Admin
+    </button>
+  </nav>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ══ SCRIPT ══════════════════════════════════════════════════════ -->
+<script>
+// ─── CONFIGURAÇÃO SUPABASE ──────────────────────────────────────────────────
+// SUBSTITUA pelos valores do seu projeto Supabase (Settings → API)
+const SUPABASE_URL  = 'COLE_SUA_URL_AQUI';
+const SUPABASE_ANON = 'COLE_SUA_ANON_KEY_AQUI';
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ─── ESTADO ─────────────────────────────────────────────────────────────────
+let currentUser   = null;
+let blocos        = [];     // [{id, capacidade, lotes:[{id,lote,fardos,entrada_em}]}]
+let historico     = [];
+let usuarios      = [];
+let selectedBloco = null;
+let actionTab     = 'lotes';
+let selectedLote  = null;
+let currentTab    = 'mapa';
+let histSearch    = '';
+
+// ─── TOAST ──────────────────────────────────────────────────────────────────
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(t._to);
+  t._to = setTimeout(() => t.className = '', 2800);
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+function totalBloco(b) { return (b.lotes||[]).reduce((s,l)=>s+l.fardos,0); }
+function livresBloco(b) { return b.capacidade - totalBloco(b); }
+function pct(b) { return totalBloco(b)/b.capacidade; }
+function blockColor(b) {
+  const p = pct(b);
+  if (totalBloco(b)===0) return '#5F5E5A';
+  if (p < 0.5)  return '#639922';
+  if (p < 0.85) return '#BA7517';
+  return '#A32D2D';
+}
+function now() { return new Date().toLocaleString('pt-BR'); }
+function spinner() { return `<div class="spinner-wrap"><div class="spinner"></div></div>`; }
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+document.getElementById('li-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('btn-login').addEventListener('click', doLogin);
+document.getElementById('btn-logout').addEventListener('click', doLogout);
+
+async function doLogin() {
+  const login = document.getElementById('li-user').value.trim();
+  const senha = document.getElementById('li-pass').value;
+  const errEl = document.getElementById('login-err');
+  errEl.classList.add('hidden');
+  if (!login || !senha) { errEl.textContent='Preencha usuário e senha.'; errEl.classList.remove('hidden'); return; }
+  document.getElementById('btn-login').disabled = true;
+  document.getElementById('btn-login').textContent = 'Entrando…';
+  try {
+    const { data, error } = await sb.from('usuarios').select('*').eq('login', login).eq('senha', senha).eq('ativo', true).single();
+    if (error || !data) { errEl.textContent='Usuário ou senha incorretos.'; errEl.classList.remove('hidden'); return; }
+    currentUser = data;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-screen').classList.remove('hidden');
+    document.getElementById('topbar-user').textContent = data.nome;
+    if (data.role !== 'admin') document.getElementById('nav-admin').classList.add('hidden');
+    await loadAll();
+    showTab('mapa');
+  } catch(e) {
+    errEl.textContent = 'Erro de conexão. Verifique suas credenciais Supabase.';
+    errEl.classList.remove('hidden');
+  } finally {
+    document.getElementById('btn-login').disabled = false;
+    document.getElementById('btn-login').textContent = 'Entrar';
+  }
+}
+
+function doLogout() {
+  currentUser = null; blocos = []; historico = []; selectedBloco = null;
+  document.getElementById('app-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('li-pass').value = '';
+}
+
+// ─── LOAD DATA ───────────────────────────────────────────────────────────────
+async function loadAll() {
+  await Promise.all([loadBlocos(), loadHistorico(), loadUsuarios()]);
+}
+
+async function loadBlocos() {
+  const { data: bData } = await sb.from('blocos').select('*').order('id');
+  const { data: lData } = await sb.from('lotes').select('*').order('entrada_em');
+  blocos = (bData||[]).map(b => ({
+    ...b,
+    lotes: (lData||[]).filter(l => l.bloco_id === b.id)
+  }));
+}
+
+async function loadHistorico() {
+  const { data } = await sb.from('historico').select('*').order('quando', { ascending: false }).limit(200);
+  historico = data || [];
+}
+
+async function loadUsuarios() {
+  if (currentUser?.role !== 'admin') return;
+  const { data } = await sb.from('usuarios').select('*').order('nome');
+  usuarios = data || [];
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => showTab(el.dataset.tab));
+});
+
+function showTab(tab) {
+  currentTab = tab;
+  selectedBloco = null;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab===tab));
+  ['mapa','resumo','historico','admin'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('hidden', t!==tab);
+  });
+  if (tab==='mapa')      renderMapa();
+  if (tab==='resumo')    renderResumo();
+  if (tab==='historico') renderHistorico();
+  if (tab==='admin')     renderAdmin();
+}
+
+// ─── MAPA ────────────────────────────────────────────────────────────────────
+function renderMapa() {
+  const grid = document.getElementById('warehouse-grid');
+  grid.innerHTML = blocos.map(b => {
+    const tot = totalBloco(b);
+    const p   = Math.min(pct(b), 1);
+    const cor = blockColor(b);
+    const isSelected = selectedBloco === b.id;
+    return `<div class="bloco-card${isSelected?' selected':''}" data-bid="${b.id}" style="border-color:${cor}">
+      <span class="bloco-label">bloco</span>
+      <span class="bloco-num" style="color:${cor}">${b.id}</span>
+      <span class="bloco-qty" style="color:${cor}">${tot}/${b.capacidade}</span>
+      <div class="bloco-bar-wrap"><div class="bloco-bar" style="width:${p*100}%;background:${cor}"></div></div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.bloco-card').forEach(el => {
+    el.addEventListener('click', () => {
+      selectedBloco = parseInt(el.dataset.bid);
+      actionTab = 'lotes'; selectedLote = null;
+      renderMapa();
+      renderBlocoPanel();
+    });
+  });
+
+  const panel = document.getElementById('bloco-panel');
+  if (!selectedBloco) { panel.classList.add('hidden'); return; }
+  renderBlocoPanel();
+}
+
+function renderBlocoPanel() {
+  const panel = document.getElementById('bloco-panel');
+  const b = blocos.find(x => x.id === selectedBloco);
+  if (!b) return;
+  const tot   = totalBloco(b);
+  const livre = livresBloco(b);
+  const p     = Math.min(pct(b), 1);
+  const cor   = blockColor(b);
+
+  panel.classList.remove('hidden');
+  panel.innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Bloco ${b.id}</div>
+          <div class="panel-sub">${tot}/${b.capacidade} fardos · ${livre} livres</div>
+        </div>
+        <button class="btn btn-ghost" id="btn-close-panel" style="padding:6px 12px;font-size:12px;">✕ Fechar</button>
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${p*100}%;background:${cor}"></div></div>
+      <div class="action-tabs">
+        <button class="action-tab${actionTab==='lotes'?'  active':''}" data-at="lotes">Lotes</button>
+        <button class="action-tab${actionTab==='entrada'?' active':''}" data-at="entrada">Entrada</button>
+        <button class="action-tab${actionTab==='saida'?'  active':''}" data-at="saida">Saída</button>
+      </div>
+      <div id="panel-body"></div>
+    </div>`;
+
+  document.getElementById('btn-close-panel').onclick = () => {
+    selectedBloco = null;
+    document.getElementById('bloco-panel').classList.add('hidden');
+    renderMapa();
+  };
+  panel.querySelectorAll('.action-tab').forEach(el => {
+    el.addEventListener('click', () => {
+      actionTab = el.dataset.at; selectedLote = null;
+      renderBlocoPanel();
+    });
+  });
+  renderPanelBody(b, livre);
+}
+
+function renderPanelBody(b, livre) {
+  const body = document.getElementById('panel-body');
+  if (actionTab === 'lotes')   renderLotes(body, b);
+  if (actionTab === 'entrada') renderEntrada(body, b, livre);
+  if (actionTab === 'saida')   renderSaida(body, b);
+}
+
+function renderLotes(el, b) {
+  if (!b.lotes.length) { el.innerHTML = `<div class="empty-msg">Bloco vazio — sem lotes.</div>`; return; }
+  el.innerHTML = b.lotes.map(l => `
+    <div class="lote-row">
+      <div>
+        <div class="lote-name">${l.lote}</div>
+        <div class="lote-date">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div>
+      </div>
+      <div class="lote-fardos">${l.fardos}</div>
+    </div>`).join('');
+}
+
+function renderEntrada(el, b, livre) {
+  el.innerHTML = `
+    <div class="form-field"><label>Número do lote</label><input id="f-lote" type="text" placeholder="ex: LOT-2024-001"></div>
+    <div class="form-field"><label>Quantidade de fardos (máx. ${livre})</label><input id="f-fardos" type="number" min="1" max="${livre}" placeholder="${livre}"></div>
+    <button class="btn btn-green btn-full" id="btn-entrada">📥 Registrar Entrada</button>`;
+
+  document.getElementById('btn-entrada').onclick = async () => {
+    const lote   = document.getElementById('f-lote').value.trim().toUpperCase();
+    const fardos = parseInt(document.getElementById('f-fardos').value);
+    if (!lote)           return toast('Informe o número do lote.', 'err');
+    if (!fardos||fardos<=0) return toast('Quantidade inválida.', 'err');
+    if (fardos > livre)  return toast(`Espaço insuficiente. Livre: ${livre} fardos.`, 'err');
+    if (b.lotes.find(l=>l.lote===lote)) return toast('Lote já existe neste bloco.', 'err');
+
+    document.getElementById('btn-entrada').disabled = true;
+    try {
+      const { error: e1 } = await sb.from('lotes').insert({ bloco_id: b.id, lote, fardos });
+      if (e1) throw e1;
+      const { error: e2 } = await sb.from('historico').insert({
+        acao: 'ENTRADA', bloco_id: b.id, lote, fardos,
+        usuario_nome: currentUser.nome, usuario_id: currentUser.id
+      });
+      if (e2) throw e2;
+      await loadBlocos();
+      toast(`✅ Entrada de ${fardos} fardos registrada!`);
+      actionTab = 'lotes';
+      renderMapa();
+      renderBlocoPanel();
+    } catch(e) {
+      toast('Erro ao salvar. Tente novamente.', 'err');
+    } finally {
+      document.getElementById('btn-entrada') && (document.getElementById('btn-entrada').disabled=false);
+    }
+  };
+}
+
+function renderSaida(el, b) {
+  if (!b.lotes.length) { el.innerHTML = `<div class="empty-msg">Nenhum lote para remover.</div>`; return; }
+  const sel    = selectedLote;
+  const selObj = sel ? b.lotes.find(l=>l.id===sel) : null;
+
+  el.innerHTML = `
+    <div class="form-field">
+      <label>Selecione o lote</label>
+      ${b.lotes.map(l=>`
+        <div class="lote-row${sel===l.id?' selected':''}" data-lid="${l.id}" style="margin-bottom:6px">
+          <div><div class="lote-name">${l.lote}</div></div>
+          <div class="lote-fardos">${l.fardos}</div>
+        </div>`).join('')}
+    </div>
+    ${sel ? `
+      <div class="form-field">
+        <label>Quantidade a retirar (máx. ${selObj.fardos})</label>
+        <input id="f-saida-qtd" type="number" min="1" max="${selObj.fardos}" placeholder="${selObj.fardos}">
+      </div>
+      <button class="btn btn-red btn-full" id="btn-saida">📤 Registrar Saída</button>` : ''}`;
+
+  el.querySelectorAll('[data-lid]').forEach(row => {
+    row.addEventListener('click', () => { selectedLote = row.dataset.lid; renderBlocoPanel(); });
+  });
+
+  if (sel) {
+    document.getElementById('btn-saida').onclick = async () => {
+      const qtd = parseInt(document.getElementById('f-saida-qtd').value);
+      if (!qtd||qtd<=0)         return toast('Quantidade inválida.', 'err');
+      if (qtd > selObj.fardos)  return toast(`Máximo: ${selObj.fardos} fardos.`, 'err');
+
+      document.getElementById('btn-saida').disabled = true;
+      try {
+        if (qtd === selObj.fardos) {
+          const { error } = await sb.from('lotes').delete().eq('id', sel);
+          if (error) throw error;
+        } else {
+          const { error } = await sb.from('lotes').update({ fardos: selObj.fardos - qtd }).eq('id', sel);
+          if (error) throw error;
+        }
+        const { error: e2 } = await sb.from('historico').insert({
+          acao: 'SAIDA', bloco_id: b.id, lote: selObj.lote, fardos: qtd,
+          usuario_nome: currentUser.nome, usuario_id: currentUser.id
+        });
+        if (e2) throw e2;
+        await loadBlocos();
+        toast(`✅ Saída de ${qtd} fardos registrada!`);
+        selectedLote = null; actionTab = 'lotes';
+        renderMapa();
+        renderBlocoPanel();
+      } catch(e) {
+        toast('Erro ao salvar. Tente novamente.', 'err');
+      }
+    };
+  }
+}
+
+// ─── RESUMO ───────────────────────────────────────────────────────────────────
+function renderResumo() {
+  const el = document.getElementById('resumo-content');
+  const totalFardos = blocos.reduce((s,b)=>s+totalBloco(b),0);
+  const capacidade  = blocos.reduce((s,b)=>s+b.capacidade, 0);
+  const blocosOcup  = blocos.filter(b=>totalBloco(b)>0).length;
+  const blocosLiv   = blocos.length - blocosOcup;
+
+  const lotesMap = {};
+  blocos.forEach(b => b.lotes.forEach(l => {
+    if (!lotesMap[l.lote]) lotesMap[l.lote] = { fardos:0, blocos:[] };
+    lotesMap[l.lote].fardos += l.fardos;
+    lotesMap[l.lote].blocos.push(b.id);
+  }));
+  const nLotes = Object.keys(lotesMap).length;
+  const pctOcup = capacidade ? Math.round((totalFardos/capacidade)*100) : 0;
+
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Total fardos</div><div class="stat-value" style="color:var(--accent2)">${totalFardos}</div><div class="stat-sub">de ${capacidade} cap.</div></div>
+      <div class="stat-card"><div class="stat-label">Ocupação</div><div class="stat-value" style="color:var(--accent2)">${pctOcup}%</div><div class="stat-sub">do armazém</div></div>
+      <div class="stat-card"><div class="stat-label">Blocos ocupados</div><div class="stat-value">${blocosOcup}</div><div class="stat-sub">de ${blocos.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Lotes ativos</div><div class="stat-value">${nLotes}</div><div class="stat-sub">no estoque</div></div>
+    </div>
+    <div class="sec-title">Lotes no estoque</div>
+    ${nLotes===0 ? `<div class="empty-msg">Estoque vazio.</div>` :
+      Object.entries(lotesMap).sort((a,b)=>b[1].fardos-a[1].fardos).map(([lote,info])=>`
+        <div class="lote-sum-row">
+          <div>
+            <div style="font-size:14px;font-weight:700">${lote}</div>
+            <div class="lote-sum-blocos">Blocos: ${info.blocos.join(', ')}</div>
+          </div>
+          <div style="font-size:18px;font-weight:800;color:var(--accent2)">${info.fardos} <span style="font-size:11px;color:var(--muted)">fardos</span></div>
+        </div>`).join('')}`;
+}
+
+// ─── HISTÓRICO ────────────────────────────────────────────────────────────────
+function renderHistorico() {
+  const el = document.getElementById('historico-list');
+  const inp = document.getElementById('hist-search');
+  inp.value = histSearch;
+  inp.oninput = e => { histSearch = e.target.value; renderHistoricoList(); };
+  renderHistoricoList();
+}
+
+function renderHistoricoList() {
+  const el = document.getElementById('historico-list');
+  const q = histSearch.toUpperCase();
+  const lista = historico.filter(h => !q || h.lote.includes(q) || String(h.bloco_id).includes(q));
+  if (!lista.length) { el.innerHTML = `<div class="empty-msg">Nenhum registro encontrado.</div>`; return; }
+  el.innerHTML = lista.slice(0,100).map(h=>`
+    <div class="hist-row">
+      <div>
+        <span class="badge ${h.acao==='ENTRADA'?'badge-in':'badge-out'}">${h.acao}</span>
+        <div class="hist-lote">${h.lote}</div>
+        <div class="hist-meta">Bloco ${h.bloco_id} · ${h.usuario_nome}</div>
+        <div class="hist-meta">${new Date(h.quando).toLocaleString('pt-BR')}</div>
+      </div>
+      <div class="hist-qty" style="color:${h.acao==='ENTRADA'?'var(--green2)':'var(--red2)'}">
+        ${h.acao==='ENTRADA'?'+':'-'}${h.fardos}
+      </div>
+    </div>`).join('');
+}
+
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
+function renderAdmin() {
+  const el = document.getElementById('admin-content');
+  el.innerHTML = `
+    <div class="sec-title">Usuários cadastrados</div>
+    ${usuarios.map(u=>`
+      <div class="user-row">
+        <div>
+          <div style="font-size:14px;font-weight:700">${u.nome}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Login: ${u.login}</div>
+        </div>
+        <span class="role-badge ${u.role==='admin'?'role-admin':'role-op'}">${u.role}</span>
+      </div>`).join('')}
+    <div class="divider"></div>
+    <div class="sec-title">Adicionar novo usuário</div>
+    <div class="form-field"><label>Nome completo</label><input id="nu-nome" type="text" placeholder="Ex: João Silva"></div>
+    <div class="form-field"><label>Login</label><input id="nu-login" type="text" placeholder="Ex: joao"></div>
+    <div class="form-field"><label>Senha</label><input id="nu-senha" type="password" placeholder="••••••"></div>
+    <div class="form-field">
+      <label>Perfil</label>
+      <select id="nu-role">
+        <option value="operador">Operador</option>
+        <option value="admin">Administrador</option>
+      </select>
+    </div>
+    <button class="btn btn-accent btn-full" id="btn-add-user">Adicionar usuário</button>`;
+
+  document.getElementById('btn-add-user').onclick = async () => {
+    const nome  = document.getElementById('nu-nome').value.trim();
+    const login = document.getElementById('nu-login').value.trim().toLowerCase();
+    const senha = document.getElementById('nu-senha').value;
+    const role  = document.getElementById('nu-role').value;
+    if (!nome||!login||!senha) return toast('Preencha todos os campos.','err');
+    document.getElementById('btn-add-user').disabled = true;
+    try {
+      const { error } = await sb.from('usuarios').insert({ nome, login, senha, role });
+      if (error) { toast('Erro: login já existe.','err'); return; }
+      await loadUsuarios();
+      toast('✅ Usuário adicionado!');
+      renderAdmin();
+    } catch { toast('Erro ao salvar.','err'); }
+    finally { document.getElementById('btn-add-user') && (document.getElementById('btn-add-user').disabled=false); }
+  };
+}
+</script>
+</body>
+</html>
