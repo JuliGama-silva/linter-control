@@ -255,6 +255,20 @@
   </div>
 </div>
 
+<div id="modal-edit-user" class="modal">
+  <div class="modal-box">
+    <div class="modal-title">Editar usuário</div>
+    <div class="ff"><label>Nome completo</label><input id="edt-user-nome" placeholder="Nome"></div>
+    <div class="ff"><label>Login</label><input id="edt-user-login" placeholder="Login"></div>
+    <div class="ff"><label>Senha nova (deixe vazio para não alterar)</label><input id="edt-user-senha" type="password" placeholder="••••••"></div>
+    <div class="ff"><label>Perfil</label><select id="edt-user-role"><option value="operador">Operador</option><option value="admin">Administrador</option></select></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green btn-full" id="btn-save-user">Salvar</button>
+      <button class="btn btn-ghost btn-full" id="btn-cancel-user">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -452,9 +466,44 @@ document.getElementById('btn-confirm-delete').onclick=async()=>{
 };
 document.getElementById('btn-cancel-delete').onclick=()=>{document.getElementById('modal-delete').classList.remove('show');deletingId=null;};
 
+let editUserId=null;
+document.getElementById('btn-save-user').onclick=async()=>{
+  if(!editUserId)return;
+  const nome=document.getElementById('edt-user-nome').value.trim();
+  const login=document.getElementById('edt-user-login').value.trim().toLowerCase();
+  const role=document.getElementById('edt-user-role').value;
+  if(!nome||!login)return toast('Nome e login obrigatórios.','err');
+  document.getElementById('btn-save-user').disabled=true;
+  try{
+    const upd={nome,login,role};
+    const senha=document.getElementById('edt-user-senha').value;
+    if(senha)upd.senha=senha;
+    await sb.from('usuarios').update(upd).eq('id',editUserId);
+    await loadUsuarios();
+    toast('✅ Usuário atualizado!');
+    document.getElementById('modal-edit-user').classList.remove('show');
+    editUserId=null;
+    renderAdmin();
+  }catch{toast('Erro ao atualizar.','err');}
+  finally{document.getElementById('btn-save-user').disabled=false;}
+};
+
+document.getElementById('btn-cancel-user').onclick=()=>{document.getElementById('modal-edit-user').classList.remove('show');editUserId=null;};
+
+async function delUser(id){
+  try{
+    await sb.from('usuarios').delete().eq('id',id);
+    await loadUsuarios();
+    toast('✅ Usuário excluído!');
+    renderAdmin();
+  }catch{toast('Erro ao excluir.','err');}
+}
+
 function renderAdmin(){
   const el=document.getElementById('admin-users');
-  el.innerHTML=usuarios.map(u=>`<div class="user-row"><div><div style="font-size:14px;font-weight:700">${u.nome}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Login: ${u.login}</div></div><span class="role-badge ${u.role==='admin'?'role-admin':'role-op'}">${u.role}</span></div>`).join('');
+  el.innerHTML=usuarios.map(u=>`<div class="user-row"><div><div style="font-size:14px;font-weight:700">${u.nome}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Login: ${u.login}</div></div><div style="display:flex;gap:6px;"><span class="role-badge ${u.role==='admin'?'role-admin':'role-op'}">${u.role}</span><button class="btn btn-ghost btn-sm" data-uid="${u.id}" data-nome="${u.nome}" data-login="${u.login}" data-role="${u.role}">✎</button><button class="btn btn-ghost btn-sm" data-uid="${u.id}" data-nome="${u.nome}" style="color:var(--red2);">🗑️</button></div></div>`).join('');
+  document.querySelectorAll('button[data-uid][data-nome][data-login]').forEach(b=>{b.onclick=()=>{editUserId=parseInt(b.dataset.uid);document.getElementById('edt-user-nome').value=b.dataset.nome;document.getElementById('edt-user-login').value=b.dataset.login;document.getElementById('edt-user-senha').value='';document.getElementById('edt-user-role').value=b.dataset.role;document.getElementById('modal-edit-user').classList.add('show');}});
+  document.querySelectorAll('button[data-uid][data-nome]:not([data-login])').forEach(b=>{b.onclick=()=>{if(!confirm(`Excluir ${b.dataset.nome}?`))return;delUser(parseInt(b.dataset.uid));}});
   document.getElementById('btn-add-user').onclick=async()=>{
     const nome=document.getElementById('nu-nome').value.trim();
     const login=document.getElementById('nu-login').value.trim().toLowerCase();
