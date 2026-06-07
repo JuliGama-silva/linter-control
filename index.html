@@ -418,20 +418,24 @@ function openEditModal(id){
   document.getElementById('modal-edit').classList.add('show');
 }
 document.getElementById('btn-save-edit').onclick=async()=>{
+  console.log('Clicou em salvar edição');
   const obs=document.getElementById('edit-obs').value.trim()||null;
   const nf=document.getElementById('edit-nf').value.trim()||null;
+  console.log('editingId:',editingId,'obs:',obs,'nf:',nf);
   document.getElementById('btn-save-edit').disabled=true;
   try{
     const h=historico.find(x=>x.id===editingId);
+    console.log('Registro encontrado:',h);
     if(!h){toast('Registro não encontrado.','err');return;}
     const {error}=await sb.from('historico').update({observacao:obs,numero_nf:nf}).eq('id',editingId);
-    if(error){toast('Erro: '+error.message,'err');console.error(error);return;}
+    console.log('Erro da query:',error);
+    if(error){toast('Erro: '+error.message,'err');return;}
     await loadHistorico();
-    toast('✅ Movimentação editada!');
+    toast('✅ Editado!');
     document.getElementById('modal-edit').classList.remove('show');
     editingId=null;
     renderHistList();
-  }catch(e){toast('Erro: '+e.message,'err');console.error(e);}
+  }catch(e){console.error('Erro:',e);toast('Erro: '+e.message,'err');}
   finally{document.getElementById('btn-save-edit').disabled=false;}
 };
 document.getElementById('btn-cancel-edit').onclick=()=>{document.getElementById('modal-edit').classList.remove('show');editingId=null;};
