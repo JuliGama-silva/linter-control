@@ -417,27 +417,28 @@ function openEditModal(id){
   document.getElementById('edit-qtd').value='';
   document.getElementById('modal-edit').classList.add('show');
 }
-document.getElementById('btn-save-edit').onclick=async()=>{
-  console.log('Clicou em salvar edição');
+const btnSaveEdit=document.getElementById('btn-save-edit');
+if(btnSaveEdit){
+  btnSaveEdit.removeEventListener('click',saveEditHandler);
+  btnSaveEdit.addEventListener('click',saveEditHandler);
+}
+
+async function saveEditHandler(){
+  console.log('Clicou em salvar');
   const obs=document.getElementById('edit-obs').value.trim()||null;
   const nf=document.getElementById('edit-nf').value.trim()||null;
-  console.log('editingId:',editingId,'obs:',obs,'nf:',nf);
-  document.getElementById('btn-save-edit').disabled=true;
+  console.log('Valores:',obs,nf);
+  if(!editingId){console.log('Sem editingId');return;}
   try{
-    const h=historico.find(x=>x.id===editingId);
-    console.log('Registro encontrado:',h);
-    if(!h){toast('Registro não encontrado.','err');return;}
     const {error}=await sb.from('historico').update({observacao:obs,numero_nf:nf}).eq('id',editingId);
-    console.log('Erro da query:',error);
-    if(error){toast('Erro: '+error.message,'err');return;}
+    if(error){console.error('Erro Supabase:',error);toast('Erro: '+error.message,'err');return;}
     await loadHistorico();
     toast('✅ Editado!');
     document.getElementById('modal-edit').classList.remove('show');
     editingId=null;
     renderHistList();
-  }catch(e){console.error('Erro:',e);toast('Erro: '+e.message,'err');}
-  finally{document.getElementById('btn-save-edit').disabled=false;}
-};
+  }catch(e){console.error('Erro geral:',e);toast('Erro: '+e.message,'err');}
+}
 document.getElementById('btn-cancel-edit').onclick=()=>{document.getElementById('modal-edit').classList.remove('show');editingId=null;};
 
 function openDeleteModal(id,lote,qtd){
