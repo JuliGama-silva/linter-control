@@ -492,11 +492,12 @@ document.getElementById('btn-cancel-user').onclick=()=>{document.getElementById(
 
 async function delUser(id){
   try{
-    await sb.from('usuarios').delete().eq('id',id);
+    const {error}=await sb.from('usuarios').delete().eq('id',id);
+    if(error){toast('Erro: '+error.message,'err');console.error(error);return;}
     await loadUsuarios();
     toast('✅ Usuário excluído!');
     renderAdmin();
-  }catch{toast('Erro ao excluir.','err');}
+  }catch(e){toast('Erro ao excluir: '+e.message,'err');console.error(e);}
 }
 
 function renderAdmin(){
