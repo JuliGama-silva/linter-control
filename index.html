@@ -1,472 +1,503 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <title>Linter Control</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
-  <style>
-    :root{--bg:#0f1117;--surface:#1a1d27;--card:#22263a;--border:#2e3250;--accent:#BA7517;--accent2:#FAC775;--green:#3B6D11;--green2:#97C459;--red:#A32D2D;--red2:#F09595;--blue2:#85B7EB;--text:#eef0f7;--muted:#7a7f9a;--font:'Segoe UI',system-ui,sans-serif;}
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overscroll-behavior:none;}
-    input,select,button,textarea{font-family:var(--font);}
-    .hidden{display:none!important;}
-    #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-    .login-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 24px;width:100%;max-width:360px;}
-    .login-logo{text-align:center;margin-bottom:28px;}
-    .login-icon{width:60px;height:60px;background:var(--accent);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;}
-    .login-logo h1{font-size:20px;font-weight:700;color:var(--accent2);letter-spacing:1px;}
-    .login-logo p{font-size:13px;color:var(--muted);margin-top:4px;}
-    .field{margin-bottom:14px;}
-    .field label{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;}
-    .field input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:12px 14px;font-size:15px;outline:none;transition:border-color .2s;}
-    .field input:focus{border-color:var(--accent);}
-    .btn{cursor:pointer;border:none;border-radius:10px;font-weight:700;font-size:15px;padding:13px 20px;transition:opacity .15s;}
-    .btn:disabled{opacity:.5;cursor:not-allowed;}
-    .btn-full{width:100%;}
-    .btn-accent{background:var(--accent);color:#0f1117;}
-    .btn-green{background:var(--green);color:#fff;}
-    .btn-red{background:var(--red);color:#fff;}
-    .btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--muted);}
-    .btn-sm{padding:6px 12px;font-size:12px;}
-    .alert{border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
-    .alert-err{background:#A32D2D22;border:1px solid #A32D2D44;color:var(--red2);}
-    #app-screen{display:flex;flex-direction:column;min-height:100vh;}
-    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;}
-    .topbar-left{display:flex;align-items:center;gap:10px;}
-    .topbar-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;}
-    .topbar-title{font-size:16px;font-weight:700;color:var(--accent2);}
-    .topbar-user{font-size:11px;color:var(--muted);}
-    .topbar-role{font-size:10px;color:var(--accent2);font-weight:600;margin-top:2px;}
-    .nav-bar{display:flex;background:var(--surface);border-top:1px solid var(--border);position:fixed;bottom:0;left:0;right:0;z-index:100;}
-    .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;transition:color .15s;}
-    .nav-item .ni{font-size:22px;margin-bottom:3px;display:block;}
-    .nav-item.active{color:var(--accent);font-weight:700;}
-    .nav-item.hidden-nav{display:none;}
-    .content{flex:1;padding:16px 16px 100px;max-width:680px;margin:0 auto;width:100%;}
-    .sec-header{margin-bottom:16px;}
-    .sec-header h2{font-size:18px;font-weight:700;}
-    .sec-header p{font-size:13px;color:var(--muted);margin-top:3px;}
-    .sec-title{font-size:14px;font-weight:700;margin-bottom:10px;}
-    .legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
-    .leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
-    .leg-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
-    .map-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;overflow:auto;}
-    .map-inner{min-width:560px;}
-    .av-row{display:flex;padding-left:26px;margin-bottom:3px;}
-    .av-num{width:46px;flex-shrink:0;text-align:center;font-size:9px;font-weight:600;color:var(--muted);}
-    .rua-row{display:flex;align-items:center;margin-bottom:2px;}
-    .rua-lbl{width:26px;flex-shrink:0;text-align:center;font-size:10px;font-weight:600;color:var(--muted);}
-    .cell{width:46px;height:50px;flex-shrink:0;border-radius:5px;margin:0 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;cursor:pointer;border:1.5px solid var(--border);transition:transform .1s;background:var(--card);}
-    .cell:hover{transform:scale(1.08);z-index:2;position:relative;}
-    .cell.selected{box-shadow:0 0 0 2.5px var(--accent2);}
-    .cell-lote{font-size:7px;font-weight:600;line-height:1.2;text-align:center;max-width:42px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-    .cell-prod{font-size:6.5px;text-align:center;max-width:42px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-    .cell-qty{font-size:9px;font-weight:700;margin-top:1px;}
-    .sep-cell{width:12px;flex-shrink:0;}
-    .inicio-bar{text-align:center;margin-top:8px;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:3px;padding:6px 0;border-top:1px solid var(--border);}
-    .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:14px;}
-    .panel-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
-    .panel-title{font-size:16px;font-weight:700;}
-    .panel-sub{font-size:12px;color:var(--muted);margin-top:3px;}
-    .prog-wrap{background:var(--border);border-radius:6px;height:7px;margin-bottom:14px;overflow:hidden;}
-    .prog-fill{height:100%;border-radius:6px;transition:width .3s;}
-    .action-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
-    .action-tab{flex:1;min-width:80px;padding:8px 4px;font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--muted);text-align:center;}
-    .action-tab.active{background:var(--accent);color:#0f1117;border-color:var(--accent);}
-    .lote-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:7px;cursor:pointer;}
-    .lote-row.sel{border-color:var(--accent);background:#BA751722;}
-    .lote-name{font-size:14px;font-weight:700;}
-    .lote-meta{font-size:11px;color:var(--muted);margin-top:2px;}
-    .lote-qty{font-size:18px;font-weight:800;color:var(--accent2);}
-    .ff{margin-bottom:12px;}
-    .ff label{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;}
-    .ff input,.ff select,.ff textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:11px 14px;font-size:14px;outline:none;transition:border-color .2s;}
-    .ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--accent);}
-    .ff textarea{resize:vertical;min-height:68px;}
-    .hist-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
-    .hist-input{flex:1;min-width:120px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-size:14px;outline:none;}
-    .hist-input:focus{border-color:var(--accent);}
-    .hist-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:7px;position:relative;}
-    .hist-top{display:flex;justify-content:space-between;align-items:flex-start;}
-    .badge{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;}
-    .badge-in{background:#3B6D1144;color:var(--green2);border:1px solid #3B6D1166;}
-    .badge-out{background:#A32D2D44;color:var(--red2);border:1px solid #A32D2D66;}
-    .hist-lote{font-size:13px;font-weight:700;margin-top:3px;}
-    .hist-meta{font-size:11px;color:var(--muted);margin-top:2px;}
-    .hist-obs{font-size:12px;color:var(--muted);margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-style:italic;}
-    .hist-qty{font-size:18px;font-weight:800;margin-left:10px;}
-    .audit-badge{display:inline-block;background:#7F77DD44;border:1px solid #7F77DD;color:#AFA9EC;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:8px;font-weight:600;}
-    .hist-actions{display:flex;gap:4px;margin-top:8px;}
-    .btn-edit{background:var(--accent);color:#0f1117;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;}
-    .btn-delete{background:var(--red);color:#fff;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;}
-    .user-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:7px;}
-    .role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;}
-    .role-admin{background:#BA751733;color:var(--accent2);border:1px solid #BA751766;}
-    .role-op{background:#185FA533;color:var(--blue2);border:1px solid #185FA566;}
-    .divider{height:1px;background:var(--border);margin:16px 0;}
-    .empty-msg{text-align:center;color:var(--muted);font-size:13px;padding:32px;}
-    #toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;}
-    #toast.show{opacity:1;}
-    #toast.ok{border-color:var(--green2);color:var(--green2);}
-    #toast.err{border-color:var(--red2);color:var(--red2);}
-    .modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;}
-    .modal.show{display:flex;}
-    .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto;}
-    .modal-title{font-size:16px;font-weight:700;margin-bottom:14px;}
-  </style>
-</head>
-<body>
+import { useState, useEffect } from "react";
 
-<div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="login-icon">🌾</div>
-      <h1>LINTER CONTROL</h1>
-      <p>Sistema de controle de fardos</p>
-    </div>
-    <div id="login-err" class="alert alert-err hidden"></div>
-    <div class="field"><label>Usuário</label><input id="li-user" type="text" placeholder="ex: admin" autocomplete="username"/></div>
-    <div class="field"><label>Senha</label><input id="li-pass" type="password" placeholder="••••••" autocomplete="current-password"/></div>
-    <button class="btn btn-accent btn-full" id="btn-login">Entrar</button>
-  </div>
-</div>
+// ── helpers ──────────────────────────────────────────────────────────────────
+const STORAGE_KEY = "linter_db";
+const USERS = [
+  { id: 1, name: "Administrador", login: "admin", password: "admin123", role: "admin" },
+  { id: 2, name: "Operador 1",    login: "op1",   password: "op1123",   role: "operador" },
+];
 
-<div id="app-screen" class="hidden">
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-icon">🌾</div>
-      <div>
-        <div class="topbar-title">Linter Control</div>
-        <div class="topbar-user" id="topbar-user">—</div>
-        <div class="topbar-role" id="topbar-role">—</div>
-      </div>
-    </div>
-    <button class="btn btn-ghost" id="btn-logout" style="padding:7px 14px;font-size:13px;">Sair</button>
-  </div>
+const TOTAL_BLOCOS = 20;
+const FARDOS_POR_BLOCO = 140;
 
-  <div class="content">
-    <div id="tab-mapa">
-      <div class="sec-header"><h2>Mapa do armazém</h2><p>Toque num bloco para gerenciar</p></div>
-      <div class="legend">
-        <div class="leg-item"><div class="leg-dot" style="background:#378ADD"></div>Linter</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#639922"></div>Fibrilha</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#BA7517"></div>Algodãozinho</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#7F77DD"></div>Fibrilha Torre</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#22263a;border:1px solid #2e3250"></div>Vazio</div>
-      </div>
-      <div class="map-wrap"><div class="map-inner" id="warehouse-grid"></div></div>
-      <div id="bloco-panel" class="hidden"></div>
-    </div>
-
-    <div id="tab-historico" class="hidden">
-      <div class="sec-header"><h2>Histórico completo</h2><p>Movimentações com auditoria</p></div>
-      <div class="hist-filters">
-        <input class="hist-input" id="hist-search" placeholder="Buscar lote, produto, usuário…"/>
-        <select class="hist-input" id="hist-filter" style="flex:0;min-width:110px;">
-          <option value="">Todos</option>
-          <option value="ENTRADA">Entradas</option>
-          <option value="SAIDA">Saídas</option>
-        </select>
-      </div>
-      <div id="historico-list"></div>
-    </div>
-
-    <div id="tab-local" class="hidden">
-      <div class="sec-header"><h2>Histórico por local</h2><p>Filtro por rua e avenida</p></div>
-      <div class="hist-filters">
-        <select class="hist-input" id="filter-rua" style="flex:1;min-width:100px;">
-          <option value="">Selecione rua…</option>
-        </select>
-        <select class="hist-input" id="filter-av" style="flex:1;min-width:100px;">
-          <option value="">Selecione avenida…</option>
-        </select>
-      </div>
-      <div class="hist-filters">
-        <input class="hist-input" id="filter-data-inicio" type="date" placeholder="Data início"/>
-        <input class="hist-input" id="filter-data-fim" type="date" placeholder="Data fim"/>
-        <button class="btn btn-accent btn-sm" id="btn-filtrar-local">Filtrar</button>
-      </div>
-      <div id="local-list"></div>
-    </div>
-
-    <div id="tab-auditoria" class="hidden">
-      <div class="sec-header"><h2>Auditoria de alterações</h2><p>Log de edições e exclusões</p></div>
-      <div class="hist-filters">
-        <input class="hist-input" id="audit-search" placeholder="Buscar usuário, lote…"/>
-        <select class="hist-input" id="audit-filter" style="flex:0;min-width:110px;">
-          <option value="">Todas</option>
-          <option value="EDIÇÃO">Edições</option>
-          <option value="EXCLUSÃO">Exclusões</option>
-        </select>
-      </div>
-      <div id="auditoria-list"></div>
-    </div>
-
-    <div id="tab-admin" class="hidden">
-      <div class="sec-header"><h2>Administração</h2><p>Gestão de usuários e sistema</p></div>
-      <div class="sec-title">Usuários cadastrados</div>
-      <div id="admin-users"></div>
-      <div class="divider"></div>
-      <div class="sec-title">Adicionar usuário</div>
-      <div class="ff"><label>Nome completo</label><input id="nu-nome" placeholder="Ex: João Silva"></div>
-      <div class="ff"><label>Login</label><input id="nu-login" placeholder="Ex: joao"></div>
-      <div class="ff"><label>Senha</label><input id="nu-senha" type="password" placeholder="••••••"></div>
-      <div class="ff"><label>Perfil</label>
-        <select id="nu-role"><option value="operador">Operador</option><option value="admin">Administrador</option></select>
-      </div>
-      <button class="btn btn-accent btn-full" id="btn-add-user">Adicionar usuário</button>
-    </div>
-  </div>
-
-  <nav class="nav-bar">
-    <button class="nav-item active" data-tab="mapa"><span class="ni">🗺️</span>Mapa</button>
-    <button class="nav-item" data-tab="historico"><span class="ni">📋</span>Histórico</button>
-    <button class="nav-item" data-tab="local"><span class="ni">📍</span>Por Local</button>
-    <button class="nav-item" id="nav-audit" data-tab="auditoria"><span class="ni">🔍</span>Auditoria</button>
-    <button class="nav-item" id="nav-admin" data-tab="admin"><span class="ni">⚙️</span>Admin</button>
-  </nav>
-</div>
-
-<div id="modal-edit" class="modal">
-  <div class="modal-box">
-    <div class="modal-title">Editar movimentação</div>
-    <div class="ff"><label>Observação</label><textarea id="edit-obs" placeholder="Atualizar observação…"></textarea></div>
-    <div class="ff"><label>Número NF</label><input id="edit-nf" placeholder="NF da movimentação"></div>
-    <div class="ff"><label>Quantidade (se necessário)</label><input id="edit-qtd" type="number" placeholder="Deixar em branco para não alterar"></div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-green btn-full" id="btn-save-edit">Salvar edição</button>
-      <button class="btn btn-ghost btn-full" id="btn-cancel-edit">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<div id="modal-delete" class="modal">
-  <div class="modal-box">
-    <div class="modal-title">Confirmar exclusão</div>
-    <p style="color:var(--muted);margin-bottom:14px;">Tem certeza que deseja excluir esta movimentação? A ação será registrada na auditoria.</p>
-    <div id="delete-info" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:14px;font-size:12px;color:var(--muted);"></div>
-    <div class="ff"><label>Motivo da exclusão</label><textarea id="delete-motivo" placeholder="Ex: Lançamento duplicado, erro de digitação…"></textarea></div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-red btn-full" id="btn-confirm-delete">Excluir</button>
-      <button class="btn btn-ghost btn-full" id="btn-cancel-delete">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast"></div>
-
-<script>
-const SUPABASE_URL='https://ajepmbvafshcyhvtysvb.supabase.co';
-const SUPABASE_ANON='sb_publishable_5N_4oXK1pIre2P_nA50GQQ_njLv8Xwr';
-const {createClient}=supabase;
-const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
-
-const RUAS=['Y','X','W','V','U','T','S','R','Q','P','O','N','M','L','K','J','I','H','G','F','E','D','C','B','A'];
-const AVS_E=[1,2,3,4,5,6,7,8];
-const AVS_D=[9,10,11,12,13,14,15,16,17];
-const PRODS=['Linter','Fibrilha','Algodãozinho','Fibrilha Torre'];
-const PS={'Linter':{bg:'#185FA530',border:'#378ADD',text:'#85B7EB',dot:'#378ADD'},'Fibrilha':{bg:'#3B6D1130',border:'#639922',text:'#97C459',dot:'#639922'},'Algodãozinho':{bg:'#BA751730',border:'#BA7517',text:'#FAC775',dot:'#BA7517'},'Fibrilha Torre':{bg:'#534AB730',border:'#7F77DD',text:'#AFA9EC',dot:'#7F77DD'}};
-const ps=p=>PS[p]||{bg:'#22263a',border:'#2e3250',text:'#7a7f9a',dot:'#7a7f9a'};
-
-let currentUser=null,blocos=[],lotes=[],historico=[],usuarios=[],auditoria=[];
-let selectedBloco=null,actionTab='lotes',selectedLote=null,histSearch='',histFilter='';
-let editingId=null,deletingId=null;
-
-function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className=`show ${type}`;clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-const getBL=bid=>lotes.filter(l=>l.bloco_id===bid);
-const totB=bid=>getBL(bid).reduce((s,l)=>s+l.fardos,0);
-const livB=bid=>{const b=blocos.find(x=>x.id===bid);return(b?b.capacidade:140)-totB(bid);};
-const mainP=bid=>{const ls=getBL(bid);return ls.length?ls[0].produto:null;};
-const findB=(rua,av)=>blocos.find(b=>b.rua===rua&&b.avenida===av);
-const isAdmin=()=>currentUser?.role==='admin';
-
-async function loadAll(){await Promise.all([loadBlocos(),loadHistorico(),loadUsuarios(),loadAuditoria()]);}
-async function loadBlocos(){const {data:bd}=await sb.from('blocos').select('*').order('id');const {data:ld}=await sb.from('lotes').select('*').order('entrada_em');blocos=bd||[];lotes=ld||[];}
-async function loadHistorico(){const {data}=await sb.from('historico').select('*').order('quando',{ascending:false}).limit(300);historico=data||[];}
-async function loadUsuarios(){if(!isAdmin())return;const {data}=await sb.from('usuarios').select('*').order('nome');usuarios=data||[];}
-async function loadAuditoria(){const {data}=await sb.from('auditoria').select('*').order('criado_em',{ascending:false}).limit(200);auditoria=data||[];}
-
-document.getElementById('li-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-document.getElementById('btn-login').addEventListener('click',doLogin);
-document.getElementById('btn-logout').addEventListener('click',doLogout);
-
-async function doLogin(){
-  const login=document.getElementById('li-user').value.trim();
-  const senha=document.getElementById('li-pass').value;
-  const err=document.getElementById('login-err');
-  err.classList.add('hidden');
-  if(!login||!senha){err.textContent='Preencha usuário e senha.';err.classList.remove('hidden');return;}
-  document.getElementById('btn-login').disabled=true;
-  document.getElementById('btn-login').textContent='Entrando…';
-  try{
-    const {data,error}=await sb.from('usuarios').select('*').eq('login',login).eq('senha',senha).eq('ativo',true).single();
-    if(error||!data){err.textContent='Usuário ou senha incorretos.';err.classList.remove('hidden');return;}
-    currentUser=data;
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app-screen').classList.remove('hidden');
-    document.getElementById('topbar-user').textContent=data.nome;
-    document.getElementById('topbar-role').textContent=data.role===('admin')?'Administrador':'Operador';
-    if(!isAdmin()){document.getElementById('nav-audit').classList.add('hidden-nav');document.getElementById('nav-admin').classList.add('hidden-nav');}
-    await loadAll();showTab('mapa');
-  }catch{err.textContent='Erro de conexão.';err.classList.remove('hidden');}
-  finally{document.getElementById('btn-login').disabled=false;document.getElementById('btn-login').textContent='Entrar';}
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  // seed
+  const blocos = Array.from({ length: TOTAL_BLOCOS }, (_, i) => ({
+    id: i + 1,
+    lotes: [],          // [{ lote, fardos, entradaEm }]
+  }));
+  return { blocos, historico: [] };
 }
-function doLogout(){currentUser=null;blocos=[];lotes=[];historico=[];document.getElementById('app-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden');document.getElementById('li-pass').value='';}
-
-document.querySelectorAll('.nav-item').forEach(el=>el.addEventListener('click',()=>showTab(el.dataset.tab)));
-function showTab(tab){selectedBloco=null;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));['mapa','historico','local','auditoria','admin'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));if(tab==='mapa')renderMapa();if(tab==='historico')renderHistorico();if(tab==='local')renderLocal();if(tab==='auditoria')renderAuditoria();if(tab==='admin')renderAdmin();}
-
-function renderMapa(){
-  const grid=document.getElementById('warehouse-grid');
-  let h=`<div class="av-row">`;AVS_E.forEach(a=>h+=`<div class="av-num">${a}</div>`);h+=`<div class="sep-cell"></div>`;AVS_D.forEach(a=>h+=`<div class="av-num">${a}</div>`);h+=`</div>`;
-  RUAS.forEach(rua=>{h+=`<div class="rua-row"><div class="rua-lbl">${rua}</div>`;[...AVS_E,null,...AVS_D].forEach(av=>{if(av===null){h+=`<div class="sep-cell"></div>`;return;}const b=findB(rua,av);const bid=b?b.id:null;const tot=bid?totB(bid):0;const prod=bid?mainP(bid):null;const st=prod?ps(prod):{bg:'#22263a',border:'#2e3250',text:'#7a7f9a'};const isSel=selectedBloco&&b&&selectedBloco===b.id;const ls=bid?getBL(bid):[];h+=`<div class="cell${isSel?' selected':''}" data-rua="${rua}" data-av="${av}" style="background:${st.bg};border-color:${st.border}">`;if(tot>0&&ls.length){h+=`<div class="cell-lote" style="color:${st.text}">${ls[0].lote}</div>`;h+=`<div class="cell-prod" style="color:${st.text}">${prod}</div>`;h+=`<div class="cell-qty" style="color:${st.text}">${tot}</div>`;}h+=`</div>`;});h+=`</div>`;});h+=`<div class="inicio-bar">▲  INÍCIO / ENTRADA  ▲</div>`;grid.innerHTML=h;grid.querySelectorAll('.cell').forEach(el=>{el.addEventListener('click',()=>{const b=findB(el.dataset.rua,parseInt(el.dataset.av));if(!b){toast('Bloco não cadastrado.','err');return;}selectedBloco=b.id;actionTab='lotes';selectedLote=null;renderMapa();renderBlocoPanel();});});const panel=document.getElementById('bloco-panel');if(!selectedBloco){panel.classList.add('hidden');return;}renderBlocoPanel();
+function saveDB(db) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+}
+function now() {
+  return new Date().toLocaleString("pt-BR");
+}
+function totalFardosBloco(bloco) {
+  return bloco.lotes.reduce((s, l) => s + l.fardos, 0);
 }
 
-function renderBlocoPanel(){
-  const panel=document.getElementById('bloco-panel');
-  const b=blocos.find(x=>x.id===selectedBloco);
-  if(!b){panel.classList.add('hidden');return;}
-  const tot=totB(b.id),livre=livB(b.id);
-  const p=Math.min(tot/b.capacidade,1);
-  const prod=mainP(b.id);
-  const cor=prod?ps(prod).dot:'#7a7f9a';
-  panel.classList.remove('hidden');
-  panel.innerHTML=`<div class="panel"><div class="panel-head"><div><div class="panel-title">Rua ${b.rua} — Avenida ${b.avenida}</div><div class="panel-sub">${tot}/${b.capacidade} fardos · ${livre} livres</div></div><button class="btn btn-ghost" id="btn-close-panel" style="padding:6px 12px;font-size:12px;">✕</button></div><div class="prog-wrap"><div class="prog-fill" style="width:${p*100}%;background:${cor}"></div></div><div class="action-tabs"><button class="action-tab${actionTab==='lotes'?' active':''}" data-at="lotes">Lotes</button><button class="action-tab${actionTab==='entrada'?' active':''}" data-at="entrada">Entrada</button>${isAdmin()?`<button class="action-tab${actionTab==='saida'?' active':''}" data-at="saida">Saída</button>`:''}</div><div id="panel-body"></div></div>`;
-  document.getElementById('btn-close-panel').onclick=()=>{selectedBloco=null;panel.classList.add('hidden');renderMapa();};
-  panel.querySelectorAll('.action-tab').forEach(el=>{el.addEventListener('click',()=>{actionTab=el.dataset.at;selectedLote=null;renderBlocoPanel();});});
-  renderPanelBody(b,livre);
-}
-
-function renderPanelBody(b,livre){
-  const body=document.getElementById('panel-body');
-  const ls=getBL(b.id);
-  if(actionTab==='lotes'){if(!ls.length){body.innerHTML=`<div class="empty-msg">Bloco vazio.</div>`;return;}body.innerHTML=ls.map(l=>{const st=ps(l.produto);return `<div class="lote-row" style="border-left:4px solid ${st.dot}"><div><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div></div><div class="lote-qty">${l.fardos}</div></div>`;}).join('');}
-  if(actionTab==='entrada'){body.innerHTML=`<div class="ff"><label>Número do lote</label><input id="f-lote" placeholder="ex: LINTER2025-L01"></div><div class="ff"><label>Produto</label><select id="f-prod"><option value="">Selecione o produto…</option>${PRODS.map(p=>`<option>${p}</option>`).join('')}</select></div><div class="ff"><label>Quantidade de fardos (máx. ${livre})</label><input id="f-fardos" type="number" min="1" max="${livre}" placeholder="${livre}"></div><div class="ff"><label>Número NF (opcional)</label><input id="f-nf" placeholder="NF de entrada"></div><div class="ff"><label>Observação (opcional)</label><textarea id="f-obs" placeholder="Ex: Carga do caminhão ABC-1234, campo norte…"></textarea></div><button class="btn btn-green btn-full" id="btn-entrada">📥 Registrar Entrada</button>`;document.getElementById('btn-entrada').onclick=async()=>{const lote=document.getElementById('f-lote').value.trim().toUpperCase();const prod=document.getElementById('f-prod').value;const n=parseInt(document.getElementById('f-fardos').value);const nf=document.getElementById('f-nf').value.trim()||null;const obs=document.getElementById('f-obs').value.trim()||null;if(!lote)return toast('Informe o número do lote.','err');if(!prod)return toast('Selecione o produto.','err');if(!n||n<=0)return toast('Quantidade inválida.','err');if(n>livre)return toast(`Espaço insuficiente. Livre: ${livre}.`,'err');if(ls.find(l=>l.lote===lote))return toast('Lote já existe neste bloco.','err');document.getElementById('btn-entrada').disabled=true;try{const {error:e1}=await sb.from('lotes').insert({bloco_id:b.id,lote,produto:prod,fardos:n});if(e1)throw e1;const {error:e2}=await sb.from('historico').insert({acao:'ENTRADA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});if(e2)throw e2;const {error:e3}=await sb.from('logs_operacoes').insert({operacao:'ENTRADA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,status:'SUCESSO'});if(e3)throw e3;await loadBlocos();await loadHistorico();toast(`✅ ${n} fardos de ${lote} registrados!`);actionTab='lotes';renderMapa();renderBlocoPanel();}catch{toast('Erro ao salvar.','err');}finally{const btn=document.getElementById('btn-entrada');if(btn)btn.disabled=false;}};}
-  if(actionTab==='saida'){if(!ls.length){body.innerHTML=`<div class="empty-msg">Nenhum lote para remover.</div>`;return;}const selObj=selectedLote?ls.find(l=>l.id===selectedLote):null;body.innerHTML=ls.map(l=>{const st=ps(l.produto);return `<div class="lote-row${selectedLote===l.id?' sel':''}" data-lid="${l.id}" style="border-left:4px solid ${st.dot}"><div><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div></div><div class="lote-qty">${l.fardos}</div></div>`;}).join('')+(selObj?`<div class="ff" style="margin-top:10px"><label>Quantidade a retirar (máx. ${selObj.fardos})</label><input id="f-sqtd" type="number" min="1" max="${selObj.fardos}" placeholder="${selObj.fardos}"></div><div class="ff"><label>Número NF (opcional)</label><input id="f-snf" placeholder="NF de saída"></div><div class="ff"><label>Observação (opcional)</label><textarea id="f-sobs" placeholder="Ex: Enviado para processamento, NF 12345…"></textarea></div><button class="btn btn-red btn-full" id="btn-saida">📤 Registrar Saída</button>`:'');body.querySelectorAll('[data-lid]').forEach(el=>{el.addEventListener('click',()=>{selectedLote=el.dataset.lid;renderBlocoPanel();});});if(selObj){document.getElementById('btn-saida').onclick=async()=>{const n=parseInt(document.getElementById('f-sqtd').value);const nf=document.getElementById('f-snf').value.trim()||null;const obs=document.getElementById('f-sobs').value.trim()||null;if(!n||n<=0)return toast('Quantidade inválida.','err');if(n>selObj.fardos)return toast(`Máximo: ${selObj.fardos}.`,'err');document.getElementById('btn-saida').disabled=true;try{if(n===selObj.fardos){await sb.from('lotes').delete().eq('id',selObj.id);}else{await sb.from('lotes').update({fardos:selObj.fardos-n}).eq('id',selObj.id);}const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});if(e1)throw e1;const {error:e2}=await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});if(e2)throw e2;await loadBlocos();await loadHistorico();toast(`✅ Saída de ${n} fardos registrada!`);selectedLote=null;actionTab='lotes';renderMapa();renderBlocoPanel();}catch{toast('Erro ao salvar.','err');}finally{const btn=document.getElementById('btn-saida');if(btn)btn.disabled=false;}};}}
-}
-
-function renderHistorico(){
-  const inp=document.getElementById('hist-search');
-  const sel=document.getElementById('hist-filter');
-  inp.value=histSearch;sel.value=histFilter;
-  inp.oninput=e=>{histSearch=e.target.value;renderHistList();};
-  sel.onchange=e=>{histFilter=e.target.value;renderHistList();};
-  renderHistList();
-}
-function renderHistList(){
-  const el=document.getElementById('historico-list');
-  const q=histSearch.toUpperCase();
-  const lista=historico.filter(h=>{const mq=!q||h.lote?.toUpperCase().includes(q)||h.produto?.toUpperCase().includes(q)||h.usuario_nome?.toUpperCase().includes(q)||String(h.rua||'').includes(q)||String(h.avenida||'').includes(q);return mq&&(!histFilter||h.acao===histFilter);});
-  if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhum registro encontrado.</div>`;return;}
-  el.innerHTML=lista.slice(0,200).map(h=>{const st=ps(h.produto);const isEdited=h.editado_em?` <span class="audit-badge">✎ Editado</span>`:'';return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge ${h.acao==='ENTRADA'?'badge-in':'badge-out'}">${h.acao}</span><div class="hist-lote">${h.lote} <span style="font-size:11px;color:${st.dot};font-weight:600">${h.produto||''}</span>${isEdited}</div><div class="hist-meta">📍 Rua ${h.rua||'—'} · Av ${h.avenida||'—'}</div><div class="hist-meta">👤 <strong>${h.usuario_nome}</strong></div><div class="hist-meta">🕐 ${new Date(h.quando).toLocaleString('pt-BR')}</div>${h.numero_nf?`<div class="hist-meta">📄 NF: ${h.numero_nf}</div>`:''}</div><div class="hist-qty" style="color:${h.acao==='ENTRADA'?'var(--green2)':'var(--red2)'}">${h.acao==='ENTRADA'?'+':'-'}${h.fardos}</div></div>${h.observacao?`<div class="hist-obs">📝 ${h.observacao}</div>`:''}${isAdmin()?`<div class="hist-actions"><button class="btn-edit" onclick="openEditModal(${h.id})">Editar</button><button class="btn-delete" onclick="openDeleteModal(${h.id},'${h.lote}',${h.fardos})">Excluir</button></div>`:''}`;}).join('');}
-
-function renderLocal(){
-  const ruaSel=document.getElementById('filter-rua');
-  const avSel=document.getElementById('filter-av');
-  if(ruaSel.children.length===1){RUAS.forEach(r=>ruaSel.innerHTML+=`<option>${r}</option>`);}
-  if(avSel.children.length===1){[...AVS_E,...AVS_D].forEach(a=>avSel.innerHTML+=`<option>${a}</option>`);}
-  document.getElementById('btn-filtrar-local').onclick=()=>renderLocalList();
-}
-function renderLocalList(){
-  const el=document.getElementById('local-list');
-  const rua=document.getElementById('filter-rua').value;
-  const av=document.getElementById('filter-av').value;
-  const dataInicio=document.getElementById('filter-data-inicio').value;
-  const dataFim=document.getElementById('filter-data-fim').value;
-  if(!rua||!av){el.innerHTML=`<div class="empty-msg">Selecione rua e avenida.</div>`;return;}
-  const lista=historico.filter(h=>{const matchLocal=h.rua===rua&&h.avenida===parseInt(av);if(!matchLocal)return false;if(dataInicio){const d=new Date(h.quando).getTime();const dInicio=new Date(dataInicio).getTime();if(d<dInicio)return false;}if(dataFim){const d=new Date(h.quando).getTime();const dFim=new Date(dataFim).getTime()+86400000;if(d>dFim)return false;}return true;});
-  if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhuma movimentação neste local no período.</div>`;return;}
-  el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;"><strong>Rua ${rua} — Avenida ${av}</strong><br>Total de movimentações: ${lista.length}</div>`+lista.map(h=>{const st=ps(h.produto);return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge ${h.acao==='ENTRADA'?'badge-in':'badge-out'}">${h.acao}</span><div class="hist-lote">${h.lote}</div><div class="hist-meta">Produto: <strong style="color:${st.dot}">${h.produto}</strong></div><div class="hist-meta">Usuario: <strong>${h.usuario_nome}</strong></div><div class="hist-meta">Data: <strong>${new Date(h.quando).toLocaleString('pt-BR')}</strong></div>${h.numero_nf?`<div class="hist-meta">📄 NF: ${h.numero_nf}</div>`:''}</div><div class="hist-qty" style="color:${h.acao==='ENTRADA'?'var(--green2)':'var(--red2)'}">${h.acao==='ENTRADA'?'+':'-'}${h.fardos}</div></div>${h.observacao?`<div class="hist-obs">📝 ${h.observacao}</div>`:''}`;}).join('');
-}
-
-function renderAuditoria(){
-  const inp=document.getElementById('audit-search');
-  const sel=document.getElementById('audit-filter');
-  inp.oninput=e=>{renderAuditList(e.target.value,sel.value);};
-  sel.onchange=e=>{renderAuditList(inp.value,e.target.value);};
-  renderAuditList('','');
-}
-function renderAuditList(q,type){
-  const el=document.getElementById('auditoria-list');
-  const lista=auditoria.filter(a=>{const mq=!q||a.usuario_nome?.toUpperCase().includes(q.toUpperCase())||a.tabela?.toUpperCase().includes(q.toUpperCase());return mq&&(!type||a.acao===type);});
-  if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhuma auditoria encontrada.</div>`;return;}
-  el.innerHTML=lista.map(a=>{return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge" style="background:#7F77DD44;border:1px solid #7F77DD;color:#AFA9EC">${a.acao}</span><div class="hist-lote">${a.tabela}</div><div class="hist-meta">Usuário: <strong>${a.usuario_nome}</strong></div><div class="hist-meta">Data: <strong>${new Date(a.criado_em).toLocaleString('pt-BR')}</strong></div></div></div><div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:8px;font-size:11px;color:var(--muted);"><strong>Antes:</strong> ${JSON.stringify(a.dados_antigos||{}).substring(0,100)}…<br><strong>Depois:</strong> ${JSON.stringify(a.dados_novos||{}).substring(0,100)}…</div>${a.motivo?`<div style="margin-top:8px;font-size:12px;color:#AFA9EC;font-style:italic;">Motivo: ${a.motivo}</div>`:''}`;}).join('');
-}
-
-function openEditModal(id){
-  editingId=id;
-  const h=historico.find(x=>x.id===id);
-  if(!h)return;
-  document.getElementById('edit-obs').value=h.observacao||'';
-  document.getElementById('edit-nf').value=h.numero_nf||'';
-  document.getElementById('edit-qtd').value='';
-  document.getElementById('modal-edit').classList.add('show');
-}
-document.getElementById('btn-save-edit').onclick=async()=>{
-  const obs=document.getElementById('edit-obs').value.trim()||null;
-  const nf=document.getElementById('edit-nf').value.trim()||null;
-  const qtd=document.getElementById('edit-qtd').value?parseInt(document.getElementById('edit-qtd').value):null;
-  document.getElementById('btn-save-edit').disabled=true;
-  try{
-    const h=historico.find(x=>x.id===editingId);
-    if(!h)throw new Error('Registro não encontrado');
-    const oldData={observacao:h.observacao,numero_nf:h.numero_nf,fardos:h.fardos};
-    const newData={observacao:obs,numero_nf:nf,fardos:qtd||h.fardos};
-    await sb.from('historico').update({observacao:obs,numero_nf:nf,fardos:qtd||h.fardos,editado_em:new Date().toISOString(),editado_por:currentUser.id}).eq('id',editingId);
-    if(qtd&&qtd!==h.fardos){const l=lotes.find(x=>x.lote===h.lote);if(l){await sb.from('lotes').update({fardos:qtd}).eq('id',l.id);}}
-    await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'historico',registro_id:editingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:oldData,dados_novos:newData});
-    await loadHistorico();await loadAuditoria();
-    toast('✅ Movimentação editada com sucesso!');
-    document.getElementById('modal-edit').classList.remove('show');
-    editingId=null;
-    if(histSearch||histFilter)renderHistList();
-  }catch(e){toast('Erro ao editar.','err');}
-  finally{document.getElementById('btn-save-edit').disabled=false;}
+// ── palette & icons ───────────────────────────────────────────────────────────
+const C = {
+  bg:       "#0f1117",
+  surface:  "#1a1d27",
+  card:     "#22263a",
+  accent:   "#f5a623",
+  green:    "#2ecc71",
+  red:      "#e74c3c",
+  blue:     "#3b82f6",
+  text:     "#eef0f7",
+  muted:    "#7a7f9a",
+  border:   "#2e3250",
 };
-document.getElementById('btn-cancel-edit').onclick=()=>{document.getElementById('modal-edit').classList.remove('show');editingId=null;};
 
-function openDeleteModal(id,lote,qtd){
-  deletingId=id;
-  document.getElementById('delete-info').innerHTML=`<strong>${lote}</strong><br>${qtd} fardos`;
-  document.getElementById('delete-motivo').value='';
-  document.getElementById('modal-delete').classList.add('show');
-}
-document.getElementById('btn-confirm-delete').onclick=async()=>{
-  const motivo=document.getElementById('delete-motivo').value.trim()||'Sem motivo informado';
-  document.getElementById('btn-confirm-delete').disabled=true;
-  try{
-    const h=historico.find(x=>x.id===deletingId);
-    if(!h)throw new Error('Registro não encontrado');
-    const dados={...h};
-    await sb.from('historico').delete().eq('id',deletingId);
-    if(h.acao==='SAIDA'){const l=lotes.find(x=>x.lote===h.lote);if(l){await sb.from('lotes').update({fardos:l.fardos+h.fardos}).eq('id',l.id);}}
-    await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'historico',registro_id:deletingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:dados,dados_novos:null,motivo});
-    await loadHistorico();await loadAuditoria();
-    toast('✅ Movimentação excluída e registrada na auditoria!');
-    document.getElementById('modal-delete').classList.remove('show');
-    deletingId=null;
-    if(histSearch||histFilter)renderHistList();
-  }catch(e){toast('Erro ao excluir.','err');}
-  finally{document.getElementById('btn-confirm-delete').disabled=false;}
-};
-document.getElementById('btn-cancel-delete').onclick=()=>{document.getElementById('modal-delete').classList.remove('show');deletingId=null;};
+// ── components ────────────────────────────────────────────────────────────────
 
-function renderAdmin(){
-  const el=document.getElementById('admin-users');
-  el.innerHTML=usuarios.map(u=>`<div class="user-row"><div><div style="font-size:14px;font-weight:700">${u.nome}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Login: ${u.login}</div></div><span class="role-badge ${u.role==='admin'?'role-admin':'role-op'}">${u.role}</span></div>`).join('');
-  document.getElementById('btn-add-user').onclick=async()=>{
-    const nome=document.getElementById('nu-nome').value.trim();
-    const login=document.getElementById('nu-login').value.trim().toLowerCase();
-    const senha=document.getElementById('nu-senha').value;
-    const role=document.getElementById('nu-role').value;
-    if(!nome||!login||!senha)return toast('Preencha todos os campos.','err');
-    document.getElementById('btn-add-user').disabled=true;
-    try{const {error}=await sb.from('usuarios').insert({nome,login,senha,role});if(error){toast('Erro: login já existe.','err');return;}await loadUsuarios();toast('✅ Usuário adicionado!');renderAdmin();document.getElementById('nu-nome').value='';document.getElementById('nu-login').value='';document.getElementById('nu-senha').value='';}catch{toast('Erro ao salvar.','err');}
-    finally{document.getElementById('btn-add-user').disabled=false;}
-  };
+function Badge({ children, color }) {
+  return (
+    <span style={{
+      background: color + "22", color, border: `1px solid ${color}44`,
+      borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700,
+      letterSpacing: 1, textTransform: "uppercase",
+    }}>{children}</span>
+  );
 }
-</script>
-</body>
-</html>
+
+function Btn({ children, onClick, color = C.accent, small, disabled, full }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      background: disabled ? C.border : color,
+      color: disabled ? C.muted : "#0f1117",
+      border: "none", borderRadius: 10, cursor: disabled ? "not-allowed" : "pointer",
+      padding: small ? "8px 16px" : "13px 20px",
+      fontWeight: 800, fontSize: small ? 13 : 15,
+      width: full ? "100%" : undefined,
+      transition: "opacity .15s",
+      opacity: disabled ? .5 : 1,
+      fontFamily: "inherit",
+    }}>{children}</button>
+  );
+}
+
+function Input({ label, value, onChange, type = "text", placeholder }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {label && <label style={{ display: "block", color: C.muted, fontSize: 12, marginBottom: 5, fontWeight: 700, letterSpacing: 1 }}>{label}</label>}
+      <input
+        type={type} value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: "100%", background: C.bg, border: `1.5px solid ${C.border}`,
+          borderRadius: 10, color: C.text, padding: "12px 14px",
+          fontSize: 15, fontFamily: "inherit", boxSizing: "border-box",
+          outline: "none",
+        }}
+      />
+    </div>
+  );
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+function Login({ onLogin }) {
+  const [login, setLogin] = useState("");
+  const [pass, setPass]   = useState("");
+  const [err, setErr]     = useState("");
+
+  function handle() {
+    const user = USERS.find(u => u.login === login && u.password === pass);
+    if (user) { onLogin(user); } else { setErr("Login ou senha incorretos."); }
+  }
+
+  return (
+    <div style={{
+      minHeight: "100vh", background: C.bg, display: "flex",
+      alignItems: "center", justifyContent: "center", padding: 24,
+    }}>
+      <div style={{
+        background: C.surface, borderRadius: 20, padding: "40px 28px",
+        maxWidth: 380, width: "100%", border: `1px solid ${C.border}`,
+        boxShadow: "0 24px 60px #00000070",
+      }}>
+        {/* logo */}
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 18,
+            background: `linear-gradient(135deg,${C.accent},#e67e22)`,
+            margin: "0 auto 16px", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 30,
+          }}>🌾</div>
+          <div style={{ color: C.accent, fontWeight: 900, fontSize: 22, letterSpacing: 1 }}>LINTER CONTROL</div>
+          <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>Sistema de Controle de Fardos</div>
+        </div>
+
+        <Input label="USUÁRIO" value={login} onChange={setLogin} placeholder="ex: admin" />
+        <Input label="SENHA"   value={pass}  onChange={setPass}  type="password" placeholder="••••••" />
+
+        {err && <div style={{ color: C.red, fontSize: 13, marginBottom: 12, textAlign: "center" }}>{err}</div>}
+
+        <Btn full onClick={handle}>Entrar</Btn>
+
+        <div style={{ color: C.muted, fontSize: 11, textAlign: "center", marginTop: 20 }}>
+          Demo: admin / admin123 &nbsp;|&nbsp; op1 / op1123
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAPA DE BLOCOS ────────────────────────────────────────────────────────────
+function MapaBlocos({ db, onSelect }) {
+  return (
+    <div style={{
+      display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, padding: 4,
+    }}>
+      {db.blocos.map(bloco => {
+        const total = totalFardosBloco(bloco);
+        const pct   = total / FARDOS_POR_BLOCO;
+        const cor   = total === 0 ? C.muted : pct < .5 ? C.green : pct < .85 ? C.accent : C.red;
+        return (
+          <button key={bloco.id} onClick={() => onSelect(bloco.id)} style={{
+            background: C.card, border: `2px solid ${cor}`,
+            borderRadius: 14, padding: "14px 6px", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+            transition: "transform .1s", color: C.text, fontFamily: "inherit",
+          }}>
+            <span style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: 1 }}>BLOCO</span>
+            <span style={{ fontSize: 22, fontWeight: 900, color: cor }}>{bloco.id}</span>
+            <span style={{ fontSize: 11, color: cor, fontWeight: 700 }}>{total}/{FARDOS_POR_BLOCO}</span>
+            {/* mini bar */}
+            <div style={{ width: "100%", background: C.border, borderRadius: 4, height: 4 }}>
+              <div style={{
+                width: `${Math.min(pct, 1) * 100}%`, height: "100%",
+                background: cor, borderRadius: 4, transition: "width .3s",
+              }} />
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── DETALHE BLOCO ─────────────────────────────────────────────────────────────
+function DetalheBloco({ db, setDb, blocoId, user, onBack }) {
+  const bloco    = db.blocos.find(b => b.id === blocoId);
+  const total    = totalFardosBloco(bloco);
+  const livre    = FARDOS_POR_BLOCO - total;
+  const [tab, setTab]       = useState("lotes");
+  const [lote, setLote]     = useState("");
+  const [fardos, setFardos] = useState("");
+  const [err, setErr]       = useState("");
+  const [saidaLote, setSaidaLote] = useState(null);
+  const [saidaQtd,  setSaidaQtd]  = useState("");
+
+  function entrada() {
+    const n = parseInt(fardos);
+    if (!lote.trim()) return setErr("Informe o número do lote.");
+    if (!n || n <= 0)  return setErr("Quantidade inválida.");
+    if (n > livre)     return setErr(`Espaço insuficiente. Livre: ${livre} fardos.`);
+    const existente = bloco.lotes.find(l => l.lote === lote.trim().toUpperCase());
+    if (existente)     return setErr("Lote já existe neste bloco.");
+
+    const novo = JSON.parse(JSON.stringify(db));
+    novo.blocos.find(b => b.id === blocoId).lotes.push({
+      lote: lote.trim().toUpperCase(), fardos: n, entradaEm: now(),
+    });
+    novo.historico.unshift({ acao: "ENTRADA", bloco: blocoId, lote: lote.trim().toUpperCase(), fardos: n, quem: user.name, quando: now() });
+    setDb(novo); saveDB(novo);
+    setLote(""); setFardos(""); setErr("");
+  }
+
+  function saida() {
+    const n = parseInt(saidaQtd);
+    const loteObj = bloco.lotes.find(l => l.lote === saidaLote);
+    if (!n || n <= 0)      return setErr("Quantidade inválida.");
+    if (n > loteObj.fardos) return setErr(`Máximo: ${loteObj.fardos} fardos.`);
+
+    const novo = JSON.parse(JSON.stringify(db));
+    const blocoNovo = novo.blocos.find(b => b.id === blocoId);
+    const loteNovo  = blocoNovo.lotes.find(l => l.lote === saidaLote);
+    loteNovo.fardos -= n;
+    if (loteNovo.fardos === 0) blocoNovo.lotes = blocoNovo.lotes.filter(l => l.lote !== saidaLote);
+    novo.historico.unshift({ acao: "SAÍDA", bloco: blocoId, lote: saidaLote, fardos: n, quem: user.name, quando: now() });
+    setDb(novo); saveDB(novo);
+    setSaidaLote(null); setSaidaQtd(""); setErr("");
+  }
+
+  const pct = total / FARDOS_POR_BLOCO;
+  const cor = total === 0 ? C.muted : pct < .5 ? C.green : pct < .85 ? C.accent : C.red;
+
+  return (
+    <div>
+      {/* header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <button onClick={onBack} style={{ background: C.card, border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 16 }}>← Voltar</button>
+        <div>
+          <div style={{ fontWeight: 900, fontSize: 20, color: C.accent }}>Bloco {blocoId}</div>
+          <div style={{ fontSize: 12, color: C.muted }}>{total} / {FARDOS_POR_BLOCO} fardos · {livre} livres</div>
+        </div>
+      </div>
+
+      {/* barra */}
+      <div style={{ background: C.border, borderRadius: 8, height: 10, marginBottom: 20, overflow: "hidden" }}>
+        <div style={{ width: `${Math.min(pct, 1) * 100}%`, height: "100%", background: cor, borderRadius: 8 }} />
+      </div>
+
+      {/* tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {["lotes", "entrada", "saída"].map(t => (
+          <button key={t} onClick={() => { setTab(t); setErr(""); }} style={{
+            flex: 1, background: tab === t ? C.accent : C.card,
+            color: tab === t ? "#0f1117" : C.muted,
+            border: `1px solid ${tab === t ? C.accent : C.border}`,
+            borderRadius: 10, padding: "9px 4px", fontWeight: 800, fontSize: 13,
+            cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize",
+          }}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
+        ))}
+      </div>
+
+      {err && <div style={{ background: C.red + "22", border: `1px solid ${C.red}44`, color: C.red, borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13 }}>{err}</div>}
+
+      {/* LOTES */}
+      {tab === "lotes" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {bloco.lotes.length === 0 && (
+            <div style={{ color: C.muted, textAlign: "center", padding: 32, fontSize: 14 }}>Bloco vazio</div>
+          )}
+          {bloco.lotes.map(l => (
+            <div key={l.lote} style={{
+              background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
+              padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center",
+            }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: C.text }}>{l.lote}</div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{l.entradaEm}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontWeight: 900, fontSize: 22, color: C.accent }}>{l.fardos}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>fardos</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ENTRADA */}
+      {tab === "entrada" && (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
+          <div style={{ color: C.green, fontWeight: 800, marginBottom: 16 }}>📥 Registrar Entrada</div>
+          <Input label="NÚMERO DO LOTE" value={lote} onChange={setLote} placeholder="ex: LOT-2024-001" />
+          <Input label="QUANTIDADE DE FARDOS" value={fardos} onChange={setFardos} type="number" placeholder={`máx ${livre}`} />
+          <Btn full onClick={entrada} color={C.green}>Confirmar Entrada</Btn>
+        </div>
+      )}
+
+      {/* SAÍDA */}
+      {tab === "saída" && (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
+          <div style={{ color: C.red, fontWeight: 800, marginBottom: 16 }}>📤 Registrar Saída</div>
+          {bloco.lotes.length === 0 ? (
+            <div style={{ color: C.muted, textAlign: "center", padding: 20 }}>Nenhum lote no bloco</div>
+          ) : (
+            <>
+              <label style={{ color: C.muted, fontSize: 12, fontWeight: 700, letterSpacing: 1, display: "block", marginBottom: 8 }}>SELECIONE O LOTE</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                {bloco.lotes.map(l => (
+                  <button key={l.lote} onClick={() => { setSaidaLote(l.lote); setSaidaQtd(""); setErr(""); }} style={{
+                    background: saidaLote === l.lote ? C.red + "33" : C.bg,
+                    border: `2px solid ${saidaLote === l.lote ? C.red : C.border}`,
+                    borderRadius: 10, padding: "12px 14px", cursor: "pointer",
+                    display: "flex", justifyContent: "space-between", color: C.text,
+                    fontFamily: "inherit", fontWeight: 700,
+                  }}>
+                    <span>{l.lote}</span>
+                    <span style={{ color: C.accent }}>{l.fardos} fardos</span>
+                  </button>
+                ))}
+              </div>
+              {saidaLote && (
+                <>
+                  <Input label="QUANTIDADE A RETIRAR" value={saidaQtd} onChange={setSaidaQtd} type="number" placeholder={`máx ${bloco.lotes.find(l => l.lote === saidaLote)?.fardos}`} />
+                  <Btn full onClick={saida} color={C.red}>Confirmar Saída</Btn>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────────────────────────
+function Historico({ db }) {
+  const [filtro, setFiltro] = useState("");
+  const lista = db.historico.filter(h =>
+    !filtro || h.lote.includes(filtro.toUpperCase()) || String(h.bloco).includes(filtro)
+  );
+
+  return (
+    <div>
+      <Input value={filtro} onChange={setFiltro} placeholder="Buscar por lote ou bloco…" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {lista.length === 0 && <div style={{ color: C.muted, textAlign: "center", padding: 32 }}>Nenhum registro</div>}
+        {lista.slice(0, 80).map((h, i) => (
+          <div key={i} style={{
+            background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+            padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+          }}>
+            <div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                <Badge color={h.acao === "ENTRADA" ? C.green : C.red}>{h.acao}</Badge>
+                <span style={{ fontWeight: 800, color: C.text }}>{h.lote}</span>
+              </div>
+              <div style={{ fontSize: 12, color: C.muted }}>Bloco {h.bloco} · {h.quem}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{h.quando}</div>
+            </div>
+            <div style={{ fontWeight: 900, fontSize: 20, color: h.acao === "ENTRADA" ? C.green : C.red }}>
+              {h.acao === "ENTRADA" ? "+" : "-"}{h.fardos}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── RESUMO ────────────────────────────────────────────────────────────────────
+function Resumo({ db }) {
+  const totalFardos   = db.blocos.reduce((s, b) => s + totalFardosBloco(b), 0);
+  const capacidade    = TOTAL_BLOCOS * FARDOS_POR_BLOCO;
+  const blocosOcup    = db.blocos.filter(b => totalFardosBloco(b) > 0).length;
+  const blocosLivres  = TOTAL_BLOCOS - blocosOcup;
+
+  // lotes únicos
+  const lotesMap = {};
+  db.blocos.forEach(b => b.lotes.forEach(l => {
+    if (!lotesMap[l.lote]) lotesMap[l.lote] = { fardos: 0, blocos: [] };
+    lotesMap[l.lote].fardos += l.fardos;
+    lotesMap[l.lote].blocos.push(b.id);
+  }));
+
+  const cards = [
+    { label: "Total de Fardos",    value: totalFardos,  sub: `de ${capacidade}`, color: C.accent },
+    { label: "Blocos Ocupados",    value: blocosOcup,   sub: `de ${TOTAL_BLOCOS}`, color: C.blue },
+    { label: "Blocos Livres",      value: blocosLivres, sub: "disponíveis",    color: C.green },
+    { label: "Lotes Ativos",       value: Object.keys(lotesMap).length, sub: "no estoque", color: C.red },
+  ];
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+        {cards.map(c => (
+          <div key={c.label} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 14px" }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>{c.label.toUpperCase()}</div>
+            <div style={{ fontSize: 30, fontWeight: 900, color: c.color }}>{c.value}</div>
+            <div style={{ fontSize: 12, color: C.muted }}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ fontWeight: 800, color: C.text, marginBottom: 12 }}>Lotes no Estoque</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {Object.entries(lotesMap).length === 0 && <div style={{ color: C.muted, textAlign: "center", padding: 24 }}>Estoque vazio</div>}
+        {Object.entries(lotesMap).map(([lote, info]) => (
+          <div key={lote} style={{
+            background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+            padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <div>
+              <div style={{ fontWeight: 800, color: C.text }}>{lote}</div>
+              <div style={{ fontSize: 12, color: C.muted }}>Blocos: {info.blocos.join(", ")}</div>
+            </div>
+            <div style={{ fontWeight: 900, fontSize: 20, color: C.accent }}>{info.fardos} <span style={{ fontSize: 12, color: C.muted }}>fardos</span></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [user,    setUser]    = useState(null);
+  const [db,      setDb]      = useState(loadDB);
+  const [tab,     setTab]     = useState("mapa");
+  const [blocoId, setBlocoId] = useState(null);
+
+  // persist on change
+  useEffect(() => { if (db) saveDB(db); }, [db]);
+
+  if (!user) return <Login onLogin={setUser} />;
+
+  const navItems = [
+    { id: "mapa",      icon: "🗺️",  label: "Mapa"      },
+    { id: "resumo",    icon: "📊",  label: "Resumo"    },
+    { id: "historico", icon: "📋",  label: "Histórico" },
+  ];
+
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text }}>
+      {/* top bar */}
+      <div style={{
+        background: C.surface, borderBottom: `1px solid ${C.border}`,
+        padding: "14px 20px", display: "flex", justifyContent: "space-between",
+        alignItems: "center", position: "sticky", top: 0, zIndex: 100,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 22 }}>🌾</span>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 16, color: C.accent }}>LINTER CONTROL</div>
+            <div style={{ fontSize: 11, color: C.muted }}>{user.name}</div>
+          </div>
+        </div>
+        <button onClick={() => { setUser(null); setBlocoId(null); setTab("mapa"); }} style={{
+          background: "transparent", border: `1px solid ${C.border}`,
+          color: C.muted, borderRadius: 8, padding: "6px 12px",
+          cursor: "pointer", fontSize: 12, fontFamily: "inherit",
+        }}>Sair</button>
+      </div>
+
+      {/* body */}
+      <div style={{ padding: "20px 16px 100px", maxWidth: 520, margin: "0 auto" }}>
+        {tab === "mapa" && !blocoId && (
+          <>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontWeight: 900, fontSize: 18 }}>Mapa de Blocos</div>
+              <div style={{ fontSize: 13, color: C.muted }}>Toque num bloco para detalhes</div>
+            </div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16, fontSize: 12 }}>
+              {[{ c: C.green, l: "Baixo" }, { c: C.accent, l: "Médio" }, { c: C.red, l: "Cheio" }, { c: C.muted, l: "Vazio" }].map(x => (
+                <div key={x.l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: x.c }} />
+                  <span style={{ color: C.muted }}>{x.l}</span>
+                </div>
+              ))}
+            </div>
+            <MapaBlocos db={db} onSelect={id => { setBlocoId(id); }} />
+          </>
+        )}
+        {tab === "mapa" && blocoId && (
+          <DetalheBloco db={db} setDb={setDb} blocoId={blocoId} user={user} onBack={() => setBlocoId(null)} />
+        )}
+        {tab === "resumo"    && <Resumo    db={db} />}
+        {tab === "historico" && <Historico db={db} />}
+      </div>
+
+      {/* bottom nav */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        background: C.surface, borderTop: `1px solid ${C.border}`,
+        display: "flex", justifyContent: "space-around", padding: "10px 0 16px",
+        zIndex: 100,
+      }}>
+        {navItems.map(n => (
+          <button key={n.id} onClick={() => { setTab(n.id); setBlocoId(null); }} style={{
+            background: "transparent", border: "none", cursor: "pointer",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+            color: tab === n.id ? C.accent : C.muted,
+            fontFamily: "inherit", flex: 1,
+          }}>
+            <span style={{ fontSize: 22 }}>{n.icon}</span>
+            <span style={{ fontSize: 11, fontWeight: tab === n.id ? 800 : 400 }}>{n.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
