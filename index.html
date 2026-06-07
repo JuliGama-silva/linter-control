@@ -420,22 +420,18 @@ function openEditModal(id){
 document.getElementById('btn-save-edit').onclick=async()=>{
   const obs=document.getElementById('edit-obs').value.trim()||null;
   const nf=document.getElementById('edit-nf').value.trim()||null;
-  const qtd=document.getElementById('edit-qtd').value?parseInt(document.getElementById('edit-qtd').value):null;
   document.getElementById('btn-save-edit').disabled=true;
   try{
     const h=historico.find(x=>x.id===editingId);
-    if(!h)throw new Error('Registro não encontrado');
-    const oldData={observacao:h.observacao,numero_nf:h.numero_nf,fardos:h.fardos};
-    const newData={observacao:obs,numero_nf:nf,fardos:qtd||h.fardos};
-    await sb.from('historico').update({observacao:obs,numero_nf:nf,fardos:qtd||h.fardos,editado_em:new Date().toISOString(),editado_por:currentUser.id}).eq('id',editingId);
-    if(qtd&&qtd!==h.fardos){const l=lotes.find(x=>x.lote===h.lote);if(l){await sb.from('lotes').update({fardos:qtd}).eq('id',l.id);}}
-    await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'historico',registro_id:editingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:oldData,dados_novos:newData});
-    await loadHistorico();await loadAuditoria();
-    toast('✅ Movimentação editada com sucesso!');
+    if(!h){toast('Registro não encontrado.','err');return;}
+    const {error}=await sb.from('historico').update({observacao:obs,numero_nf:nf}).eq('id',editingId);
+    if(error){toast('Erro: '+error.message,'err');console.error(error);return;}
+    await loadHistorico();
+    toast('✅ Movimentação editada!');
     document.getElementById('modal-edit').classList.remove('show');
     editingId=null;
-    if(histSearch||histFilter)renderHistList();
-  }catch(e){toast('Erro ao editar.','err');}
+    renderHistList();
+  }catch(e){toast('Erro: '+e.message,'err');console.error(e);}
   finally{document.getElementById('btn-save-edit').disabled=false;}
 };
 document.getElementById('btn-cancel-edit').onclick=()=>{document.getElementById('modal-edit').classList.remove('show');editingId=null;};
