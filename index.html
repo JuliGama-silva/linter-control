@@ -2,153 +2,256 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <title>Linter Control</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
   <style>
-    :root{--bg:#0f1117;--surface:#1a1d27;--card:#22263a;--border:#2e3250;--accent:#BA7517;--accent2:#FAC775;--green:#3B6D11;--green2:#97C459;--red:#A32D2D;--red2:#F09595;--blue2:#85B7EB;--text:#eef0f7;--muted:#7a7f9a;}
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-    input,select,button,textarea{font-family:inherit;}
+    :root{--bg:#0f1117;--surface:#1a1d27;--card:#22263a;--border:#2e3250;--accent:#BA7517;--accent2:#FAC775;--green:#3B6D11;--green2:#97C459;--red:#A32D2D;--red2:#F09595;--blue2:#85B7EB;--text:#eef0f7;--muted:#7a7f9a;--font:'Segoe UI',system-ui,sans-serif;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overscroll-behavior:none;}
+    input,select,button,textarea{font-family:var(--font);}
     .hidden{display:none!important;}
-    #login{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
     .login-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 24px;width:100%;max-width:360px;}
-    .logo{text-align:center;margin-bottom:28px;}
-    .logo-icon{width:60px;height:60px;background:var(--accent);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;}
-    .logo h1{font-size:20px;font-weight:700;color:var(--accent2);}
+    .login-logo{text-align:center;margin-bottom:28px;}
+    .login-icon{width:60px;height:60px;background:var(--accent);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;}
+    .login-logo h1{font-size:20px;font-weight:700;color:var(--accent2);letter-spacing:1px;}
+    .login-logo p{font-size:13px;color:var(--muted);margin-top:4px;}
     .field{margin-bottom:14px;}
-    .field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;}
-    .field input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:12px 14px;font-size:15px;outline:none;}
+    .field label{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;}
+    .field input{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:12px 14px;font-size:15px;outline:none;transition:border-color .2s;}
     .field input:focus{border-color:var(--accent);}
-    .btn{cursor:pointer;border:none;border-radius:10px;font-weight:700;padding:12px 20px;transition:opacity .15s;}
+    .btn{cursor:pointer;border:none;border-radius:10px;font-weight:700;font-size:15px;padding:13px 20px;transition:opacity .15s;}
     .btn:disabled{opacity:.5;cursor:not-allowed;}
     .btn-full{width:100%;}
     .btn-accent{background:var(--accent);color:#0f1117;}
     .btn-green{background:var(--green);color:#fff;}
     .btn-red{background:var(--red);color:#fff;}
     .btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--muted);}
-    .btn-sm{padding:6px 10px;font-size:12px;}
-    #app{display:flex;flex-direction:column;min-height:100vh;}
-    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;}
+    .btn-sm{padding:6px 12px;font-size:12px;}
+    .alert{border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
+    .alert-err{background:#A32D2D22;border:1px solid #A32D2D44;color:var(--red2);}
+    #app-screen{display:flex;flex-direction:column;min-height:100vh;}
+    .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;}
     .topbar-left{display:flex;align-items:center;gap:10px;}
     .topbar-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;}
     .topbar-title{font-size:16px;font-weight:700;color:var(--accent2);}
     .topbar-user{font-size:11px;color:var(--muted);}
-    .content{flex:1;padding:16px 16px 100px;max-width:680px;margin:0 auto;width:100%;}
-    .section{margin-bottom:20px;}
-    .section-title{font-size:16px;font-weight:700;margin-bottom:8px;}
-    .section-desc{font-size:12px;color:var(--muted);margin-bottom:12px;}
-    .map{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;overflow-x:auto;}
-    .map-grid{display:flex;flex-direction:column;gap:2px;min-width:600px;}
-    .row{display:flex;gap:2px;align-items:center;}
-    .cell{width:44px;height:48px;border:1px solid var(--border);border-radius:6px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:8px;text-align:center;padding:2px;flex-shrink:0;}
-    .cell:hover{transform:scale(1.05);}
-    .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px;}
-    .form-group{margin-bottom:12px;}
-    .form-group label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;}
-    .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;}
-    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);}
-    .hist-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;}
-    .hist-badge{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;}
-    .badge-in{background:#3B6D1144;color:var(--green2);}
-    .badge-out{background:#A32D2D44;color:var(--red2);}
-    .hist-lote{font-size:14px;font-weight:700;margin-top:4px;}
-    .hist-meta{font-size:11px;color:var(--muted);margin-top:3px;}
-    .hist-actions{display:flex;gap:6px;margin-top:8px;}
-    .user-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
-    .user-info{flex:1;}
-    .user-name{font-size:14px;font-weight:700;}
-    .user-role{font-size:10px;color:var(--muted);margin-top:3px;}
-    .nav{display:flex;background:var(--surface);border-top:1px solid var(--border);position:fixed;bottom:0;left:0;right:0;}
-    .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;}
+    .topbar-role{font-size:10px;color:var(--accent2);font-weight:600;margin-top:2px;}
+    .nav-bar{display:flex;background:var(--surface);border-top:1px solid var(--border);position:fixed;bottom:0;left:0;right:0;z-index:100;}
+    .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;transition:color .15s;}
+    .nav-item .ni{font-size:22px;margin-bottom:3px;display:block;}
     .nav-item.active{color:var(--accent);font-weight:700;}
-    .modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;}
+    .nav-item.hidden-nav{display:none;}
+    .content{flex:1;padding:16px 16px 100px;max-width:680px;margin:0 auto;width:100%;}
+    .sec-header{margin-bottom:16px;}
+    .sec-header h2{font-size:18px;font-weight:700;}
+    .sec-header p{font-size:13px;color:var(--muted);margin-top:3px;}
+    .sec-title{font-size:14px;font-weight:700;margin-bottom:10px;}
+    .legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+    .leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+    .leg-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+    .map-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;overflow:auto;}
+    .map-inner{min-width:560px;}
+    .av-row{display:flex;padding-left:26px;margin-bottom:3px;}
+    .av-num{width:46px;flex-shrink:0;text-align:center;font-size:9px;font-weight:600;color:var(--muted);}
+    .rua-row{display:flex;align-items:center;margin-bottom:2px;}
+    .rua-lbl{width:26px;flex-shrink:0;text-align:center;font-size:10px;font-weight:600;color:var(--muted);}
+    .cell{width:46px;height:50px;flex-shrink:0;border-radius:5px;margin:0 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;cursor:pointer;border:1.5px solid var(--border);transition:transform .1s;background:var(--card);}
+    .cell:hover{transform:scale(1.08);z-index:2;position:relative;}
+    .cell.selected{box-shadow:0 0 0 2.5px var(--accent2);}
+    .cell-lote{font-size:7px;font-weight:600;line-height:1.2;text-align:center;max-width:42px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+    .cell-prod{font-size:6.5px;text-align:center;max-width:42px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+    .cell-qty{font-size:9px;font-weight:700;margin-top:1px;}
+    .sep-cell{width:12px;flex-shrink:0;}
+    .inicio-bar{text-align:center;margin-top:8px;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:3px;padding:6px 0;border-top:1px solid var(--border);}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:14px;}
+    .panel-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+    .panel-title{font-size:16px;font-weight:700;}
+    .panel-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+    .prog-wrap{background:var(--border);border-radius:6px;height:7px;margin-bottom:14px;overflow:hidden;}
+    .prog-fill{height:100%;border-radius:6px;transition:width .3s;}
+    .action-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+    .action-tab{flex:1;min-width:80px;padding:8px 4px;font-size:12px;font-weight:700;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--muted);text-align:center;}
+    .action-tab.active{background:var(--accent);color:#0f1117;border-color:var(--accent);}
+    .lote-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;margin-bottom:7px;cursor:pointer;}
+    .lote-row.sel{border-color:var(--accent);background:#BA751722;}
+    .lote-name{font-size:14px;font-weight:700;}
+    .lote-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+    .lote-qty{font-size:18px;font-weight:800;color:var(--accent2);}
+    .ff{margin-bottom:12px;}
+    .ff label{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;}
+    .ff input,.ff select,.ff textarea{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:11px 14px;font-size:14px;outline:none;transition:border-color .2s;}
+    .ff input:focus,.ff select:focus,.ff textarea:focus{border-color:var(--accent);}
+    .ff textarea{resize:vertical;min-height:68px;}
+    .hist-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+    .hist-input{flex:1;min-width:120px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-size:14px;outline:none;}
+    .hist-input:focus{border-color:var(--accent);}
+    .hist-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:7px;position:relative;}
+    .hist-top{display:flex;justify-content:space-between;align-items:flex-start;}
+    .badge{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;}
+    .badge-in{background:#3B6D1144;color:var(--green2);border:1px solid #3B6D1166;}
+    .badge-out{background:#A32D2D44;color:var(--red2);border:1px solid #A32D2D66;}
+    .hist-lote{font-size:13px;font-weight:700;margin-top:3px;}
+    .hist-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+    .hist-obs{font-size:12px;color:var(--muted);margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-style:italic;}
+    .hist-qty{font-size:18px;font-weight:800;margin-left:10px;}
+    .audit-badge{display:inline-block;background:#7F77DD44;border:1px solid #7F77DD;color:#AFA9EC;padding:2px 6px;border-radius:4px;font-size:10px;margin-left:8px;font-weight:600;}
+    .hist-actions{display:flex;gap:4px;margin-top:8px;}
+    .btn-edit{background:var(--accent);color:#0f1117;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;}
+    .btn-delete{background:var(--red);color:#fff;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;}
+    .user-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:7px;}
+    .role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;}
+    .role-admin{background:#BA751733;color:var(--accent2);border:1px solid #BA751766;}
+    .role-op{background:#185FA533;color:var(--blue2);border:1px solid #185FA566;}
+    .divider{height:1px;background:var(--border);margin:16px 0;}
+    .empty-msg{text-align:center;color:var(--muted);font-size:13px;padding:32px;}
+    #toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;}
+    #toast.show{opacity:1;}
+    #toast.ok{border-color:var(--green2);color:var(--green2);}
+    #toast.err{border-color:var(--red2);color:var(--red2);}
+    .modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;}
     .modal.show{display:flex;}
     .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto;}
     .modal-title{font-size:16px;font-weight:700;margin-bottom:14px;}
-    #toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;z-index:998;opacity:0;transition:opacity .3s;}
-    #toast.show{opacity:1;}
   </style>
 </head>
 <body>
 
-<div id="login">
+<div id="login-screen">
   <div class="login-box">
-    <div class="logo">
-      <div class="logo-icon">🌾</div>
+    <div class="login-logo">
+      <div class="login-icon">🌾</div>
       <h1>LINTER CONTROL</h1>
+      <p>Sistema de controle de fardos</p>
     </div>
-    <div id="err" style="color:var(--red2);font-size:12px;margin-bottom:14px;display:none;"></div>
-    <div class="field"><label>Usuário</label><input id="user" type="text" placeholder="admin"/></div>
-    <div class="field"><label>Senha</label><input id="pass" type="password" placeholder="••••••"/></div>
-    <button class="btn btn-accent btn-full" onclick="login()">Entrar</button>
+    <div id="login-err" class="alert alert-err hidden"></div>
+    <div class="field"><label>Usuário</label><input id="li-user" type="text" placeholder="ex: admin" autocomplete="username"/></div>
+    <div class="field"><label>Senha</label><input id="li-pass" type="password" placeholder="••••••" autocomplete="current-password"/></div>
+    <button class="btn btn-accent btn-full" id="btn-login">Entrar</button>
   </div>
 </div>
 
-<div id="app" class="hidden">
+<div id="app-screen" class="hidden">
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-icon">🌾</div>
       <div>
         <div class="topbar-title">Linter Control</div>
-        <div class="topbar-user" id="user-info">—</div>
+        <div class="topbar-user" id="topbar-user">—</div>
+        <div class="topbar-role" id="topbar-role">—</div>
       </div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button>
+    <button class="btn btn-ghost" id="btn-logout" style="padding:7px 14px;font-size:13px;">Sair</button>
   </div>
 
   <div class="content">
-    <div id="mapa-tab">
-      <div class="section-title">Mapa do armazém</div>
-      <div class="map"><div class="map-grid" id="mapa"></div></div>
+    <div id="tab-mapa">
+      <div class="sec-header"><h2>Mapa do armazém</h2><p>Toque num bloco para gerenciar</p></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#378ADD"></div>Linter</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#639922"></div>Fibrilha</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#BA7517"></div>Algodãozinho</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#7F77DD"></div>Fibrilha Torre</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#22263a;border:1px solid #2e3250"></div>Vazio</div>
+      </div>
+      <div class="map-wrap"><div class="map-inner" id="warehouse-grid"></div></div>
       <div id="bloco-panel" class="hidden"></div>
     </div>
 
-    <div id="hist-tab" class="hidden">
-      <div class="section-title">Histórico</div>
-      <div id="historico"></div>
+    <div id="tab-historico" class="hidden">
+      <div class="sec-header"><h2>Histórico completo</h2><p>Movimentações com auditoria</p></div>
+      <div class="hist-filters">
+        <input class="hist-input" id="hist-search" placeholder="Buscar lote, produto, usuário…"/>
+        <select class="hist-input" id="hist-filter" style="flex:0;min-width:110px;">
+          <option value="">Todos</option>
+          <option value="ENTRADA">Entradas</option>
+          <option value="SAIDA">Saídas</option>
+        </select>
+      </div>
+      <div id="historico-list"></div>
     </div>
 
-    <div id="admin-tab" class="hidden">
-      <div class="section"><div class="section-title">Usuários</div><div id="users-list"></div></div>
-      <div class="section">
-        <div class="section-title">Adicionar usuário</div>
-        <div class="form-group"><label>Nome</label><input id="nu-nome"/></div>
-        <div class="form-group"><label>Login</label><input id="nu-login"/></div>
-        <div class="form-group"><label>Senha</label><input id="nu-senha" type="password"/></div>
-        <div class="form-group"><label>Perfil</label><select id="nu-role"><option value="operador">Operador</option><option value="admin">Admin</option></select></div>
-        <button class="btn btn-accent btn-full" onclick="addUser()">Adicionar</button>
+    <div id="tab-local" class="hidden">
+      <div class="sec-header"><h2>Histórico por local</h2><p>Filtro por rua e avenida</p></div>
+      <div class="hist-filters">
+        <select class="hist-input" id="filter-rua" style="flex:1;min-width:100px;">
+          <option value="">Selecione rua…</option>
+        </select>
+        <select class="hist-input" id="filter-av" style="flex:1;min-width:100px;">
+          <option value="">Selecione avenida…</option>
+        </select>
       </div>
+      <div class="hist-filters">
+        <input class="hist-input" id="filter-data-inicio" type="date" placeholder="Data início"/>
+        <input class="hist-input" id="filter-data-fim" type="date" placeholder="Data fim"/>
+        <button class="btn btn-accent btn-sm" id="btn-filtrar-local">Filtrar</button>
+      </div>
+      <div id="local-list"></div>
+    </div>
+
+    <div id="tab-auditoria" class="hidden">
+      <div class="sec-header"><h2>Auditoria de alterações</h2><p>Log de edições e exclusões</p></div>
+      <div class="hist-filters">
+        <input class="hist-input" id="audit-search" placeholder="Buscar usuário, lote…"/>
+        <select class="hist-input" id="audit-filter" style="flex:0;min-width:110px;">
+          <option value="">Todas</option>
+          <option value="EDIÇÃO">Edições</option>
+          <option value="EXCLUSÃO">Exclusões</option>
+        </select>
+      </div>
+      <div id="auditoria-list"></div>
+    </div>
+
+    <div id="tab-admin" class="hidden">
+      <div class="sec-header"><h2>Administração</h2><p>Gestão de usuários e sistema</p></div>
+      <div class="sec-title">Usuários cadastrados</div>
+      <div id="admin-users"></div>
+      <div class="divider"></div>
+      <div class="sec-title">Adicionar usuário</div>
+      <div class="ff"><label>Nome completo</label><input id="nu-nome" placeholder="Ex: João Silva"></div>
+      <div class="ff"><label>Login</label><input id="nu-login" placeholder="Ex: joao"></div>
+      <div class="ff"><label>Senha</label><input id="nu-senha" type="password" placeholder="••••••"></div>
+      <div class="ff"><label>Perfil</label>
+        <select id="nu-role"><option value="operador">Operador</option><option value="admin">Administrador</option></select>
+      </div>
+      <button class="btn btn-accent btn-full" id="btn-add-user">Adicionar usuário</button>
     </div>
   </div>
 
-  <nav class="nav">
-    <button class="nav-item active" data-tab="mapa" onclick="switchTab('mapa')">🗺️ Mapa</button>
-    <button class="nav-item" data-tab="hist" onclick="switchTab('hist')">📋 Histórico</button>
-    <button class="nav-item" id="admin-btn" data-tab="admin" onclick="switchTab('admin')">⚙️ Admin</button>
+  <nav class="nav-bar">
+    <button class="nav-item active" data-tab="mapa"><span class="ni">🗺️</span>Mapa</button>
+    <button class="nav-item" data-tab="historico"><span class="ni">📋</span>Histórico</button>
+    <button class="nav-item" data-tab="local"><span class="ni">📍</span>Por Local</button>
+    <button class="nav-item" id="nav-audit" data-tab="auditoria"><span class="ni">🔍</span>Auditoria</button>
+    <button class="nav-item" id="nav-admin" data-tab="admin"><span class="ni">⚙️</span>Admin</button>
   </nav>
 </div>
 
 <div id="modal-edit" class="modal">
   <div class="modal-box">
     <div class="modal-title">Editar movimentação</div>
-    <div class="form-group"><label>Observação</label><textarea id="edt-obs"></textarea></div>
-    <div class="form-group"><label>NF</label><input id="edt-nf"/></div>
-    <button class="btn btn-green btn-full" onclick="saveEdit()" style="margin-bottom:6px;">Salvar</button>
-    <button class="btn btn-ghost btn-full" onclick="closeModal()">Cancelar</button>
+    <div class="ff"><label>Observação</label><textarea id="edit-obs" placeholder="Atualizar observação…"></textarea></div>
+    <div class="ff"><label>Número NF</label><input id="edit-nf" placeholder="NF da movimentação"></div>
+    <div class="ff"><label>Quantidade (se necessário)</label><input id="edit-qtd" type="number" placeholder="Deixar em branco para não alterar"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green btn-full" id="btn-save-edit">Salvar edição</button>
+      <button class="btn btn-ghost btn-full" id="btn-cancel-edit">Cancelar</button>
+    </div>
   </div>
 </div>
 
-<div id="modal-user" class="modal">
+<div id="modal-delete" class="modal">
   <div class="modal-box">
-    <div class="modal-title">Editar usuário</div>
-    <div class="form-group"><label>Nome</label><input id="edt-nome"/></div>
-    <div class="form-group"><label>Login</label><input id="edt-login"/></div>
-    <div class="form-group"><label>Senha (deixe vazio para não mudar)</label><input id="edt-senha" type="password"/></div>
-    <div class="form-group"><label>Perfil</label><select id="edt-role"><option value="operador">Operador</option><option value="admin">Admin</option></select></div>
-    <button class="btn btn-green btn-full" onclick="saveUser()" style="margin-bottom:6px;">Salvar</button>
-    <button class="btn btn-ghost btn-full" onclick="closeModal()">Cancelar</button>
+    <div class="modal-title">Confirmar exclusão</div>
+    <p style="color:var(--muted);margin-bottom:14px;">Tem certeza que deseja excluir esta movimentação? A ação será registrada na auditoria.</p>
+    <div id="delete-info" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:14px;font-size:12px;color:var(--muted);"></div>
+    <div class="ff"><label>Motivo da exclusão</label><textarea id="delete-motivo" placeholder="Ex: Lançamento duplicado, erro de digitação…"></textarea></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-red btn-full" id="btn-confirm-delete">Excluir</button>
+      <button class="btn btn-ghost btn-full" id="btn-cancel-delete">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -156,198 +259,214 @@
 
 <script>
 const SUPABASE_URL='https://ajepmbvafshcyhvtysvb.supabase.co';
-const SUPABASE_KEY='sb_publishable_5N_4oXK1pIre2P_nA50GQQ_njLv8Xwr';
+const SUPABASE_ANON='sb_publishable_5N_4oXK1pIre2P_nA50GQQ_njLv8Xwr';
 const {createClient}=supabase;
-const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
 
-let user=null,blocos=[],lotes=[],historico=[],usuarios=[];
-let editId=null,editUserId=null;
 const RUAS=['Y','X','W','V','U','T','S','R','Q','P','O','N','M','L','K','J','I','H','G','F','E','D','C','B','A'];
+const AVS_E=[1,2,3,4,5,6,7,8];
+const AVS_D=[9,10,11,12,13,14,15,16,17];
+const PRODS=['Linter','Fibrilha','Algodãozinho','Fibrilha Torre'];
+const PS={'Linter':{bg:'#185FA530',border:'#378ADD',text:'#85B7EB',dot:'#378ADD'},'Fibrilha':{bg:'#3B6D1130',border:'#639922',text:'#97C459',dot:'#639922'},'Algodãozinho':{bg:'#BA751730',border:'#BA7517',text:'#FAC775',dot:'#BA7517'},'Fibrilha Torre':{bg:'#534AB730',border:'#7F77DD',text:'#AFA9EC',dot:'#7F77DD'}};
+const ps=p=>PS[p]||{bg:'#22263a',border:'#2e3250',text:'#7a7f9a',dot:'#7a7f9a'};
 
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='show';t.style.borderColor='var(--green2)';t.style.color='var(--green2)';setTimeout(()=>t.className='',2500);}
-function err(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='show';t.style.borderColor='var(--red2)';t.style.color='var(--red2)';setTimeout(()=>t.className='',2500);}
+let currentUser=null,blocos=[],lotes=[],historico=[],usuarios=[],auditoria=[];
+let selectedBloco=null,actionTab='lotes',selectedLote=null,histSearch='',histFilter='';
+let editingId=null,deletingId=null;
 
-async function login(){
-  const username=document.getElementById('user').value;
-  const password=document.getElementById('pass').value;
-  const e=document.getElementById('err');
-  if(!username||!password){e.textContent='Preencha tudo';e.style.display='block';return;}
+function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className=`show ${type}`;clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
+const getBL=bid=>lotes.filter(l=>l.bloco_id===bid);
+const totB=bid=>getBL(bid).reduce((s,l)=>s+l.fardos,0);
+const livB=bid=>{const b=blocos.find(x=>x.id===bid);return(b?b.capacidade:140)-totB(bid);};
+const mainP=bid=>{const ls=getBL(bid);return ls.length?ls[0].produto:null;};
+const findB=(rua,av)=>blocos.find(b=>b.rua===rua&&b.avenida===av);
+const isAdmin=()=>currentUser?.role==='admin';
+
+async function loadAll(){await Promise.all([loadBlocos(),loadHistorico(),loadUsuarios(),loadAuditoria()]);}
+async function loadBlocos(){const {data:bd}=await sb.from('blocos').select('*').order('id');const {data:ld}=await sb.from('lotes').select('*').order('entrada_em');blocos=bd||[];lotes=ld||[];}
+async function loadHistorico(){const {data}=await sb.from('historico').select('*').order('quando',{ascending:false}).limit(300);historico=data||[];}
+async function loadUsuarios(){if(!isAdmin())return;const {data}=await sb.from('usuarios').select('*').order('nome');usuarios=data||[];}
+async function loadAuditoria(){const {data}=await sb.from('auditoria').select('*').order('criado_em',{ascending:false}).limit(200);auditoria=data||[];}
+
+document.getElementById('li-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('btn-login').addEventListener('click',doLogin);
+document.getElementById('btn-logout').addEventListener('click',doLogout);
+
+async function doLogin(){
+  const login=document.getElementById('li-user').value.trim();
+  const senha=document.getElementById('li-pass').value;
+  const err=document.getElementById('login-err');
+  err.classList.add('hidden');
+  if(!login||!senha){err.textContent='Preencha usuário e senha.';err.classList.remove('hidden');return;}
+  document.getElementById('btn-login').disabled=true;
+  document.getElementById('btn-login').textContent='Entrando…';
   try{
-    const {data,error}=await sb.from('usuarios').select('*').eq('login',username).eq('senha',password).eq('ativo',true).single();
-    if(error||!data){e.textContent='Inválido';e.style.display='block';return;}
-    user=data;
-    e.style.display='none';
-    document.getElementById('login').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    document.getElementById('user-info').textContent=user.nome+' ('+user.role+')';
-    if(user.role!=='admin')document.getElementById('admin-btn').style.display='none';
-    loadAll();
-  }catch(ex){e.textContent='Erro';e.style.display='block';}
+    const {data,error}=await sb.from('usuarios').select('*').eq('login',login).eq('senha',senha).eq('ativo',true).single();
+    if(error||!data){err.textContent='Usuário ou senha incorretos.';err.classList.remove('hidden');return;}
+    currentUser=data;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-screen').classList.remove('hidden');
+    document.getElementById('topbar-user').textContent=data.nome;
+    document.getElementById('topbar-role').textContent=data.role===('admin')?'Administrador':'Operador';
+    if(!isAdmin()){document.getElementById('nav-audit').classList.add('hidden-nav');document.getElementById('nav-admin').classList.add('hidden-nav');}
+    await loadAll();showTab('mapa');
+  }catch{err.textContent='Erro de conexão.';err.classList.remove('hidden');}
+  finally{document.getElementById('btn-login').disabled=false;document.getElementById('btn-login').textContent='Entrar';}
 }
+function doLogout(){currentUser=null;blocos=[];lotes=[];historico=[];document.getElementById('app-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden');document.getElementById('li-pass').value='';}
 
-function logout(){user=null;document.getElementById('app').classList.add('hidden');document.getElementById('login').classList.remove('hidden');document.getElementById('pass').value='';}
-
-function switchTab(tab){
-  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
-  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-  document.getElementById('mapa-tab').classList.toggle('hidden',tab!=='mapa');
-  document.getElementById('hist-tab').classList.toggle('hidden',tab!=='hist');
-  document.getElementById('admin-tab').classList.toggle('hidden',tab!=='admin');
-  if(tab==='hist')renderHist();
-  if(tab==='admin')renderAdmin();
-}
-
-async function loadAll(){
-  const {data:b}=await sb.from('blocos').select('*');blocos=b||[];
-  const {data:l}=await sb.from('lotes').select('*');lotes=l||[];
-  const {data:h}=await sb.from('historico').select('*').order('quando',{ascending:false}).limit(200);historico=h||[];
-  const {data:u}=await sb.from('usuarios').select('*');usuarios=u||[];
-  renderMapa();
-}
+document.querySelectorAll('.nav-item').forEach(el=>el.addEventListener('click',()=>showTab(el.dataset.tab)));
+function showTab(tab){selectedBloco=null;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));['mapa','historico','local','auditoria','admin'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));if(tab==='mapa')renderMapa();if(tab==='historico')renderHistorico();if(tab==='local')renderLocal();if(tab==='auditoria')renderAuditoria();if(tab==='admin')renderAdmin();}
 
 function renderMapa(){
-  const m=document.getElementById('mapa');
-  m.innerHTML='';
-  RUAS.forEach(rua=>{
-    const row=document.createElement('div');
-    row.className='row';
-    const ruaLabel=document.createElement('div');
-    ruaLabel.style.width='24px';ruaLabel.style.fontSize='10px';ruaLabel.style.fontWeight='700';ruaLabel.textContent=rua;
-    row.appendChild(ruaLabel);
-    for(let av=1;av<=17;av++){
-      const b=blocos.find(x=>x.rua===rua&&x.avenida===av);
-      const tot=b?lotes.filter(l=>l.bloco_id===b.id).reduce((s,l)=>s+l.fardos,0):0;
-      const cell=document.createElement('div');
-      cell.className='cell';
-      cell.innerHTML=tot>0?`<small>${tot}</small>`:'';
-      if(b){
-        cell.style.cursor='pointer';
-        cell.onclick=()=>showBloco(b.id);
-        if(tot>0)cell.style.background='#BA751755';
-      }
-      row.appendChild(cell);
-    }
-    m.appendChild(row);
-  });
+  const grid=document.getElementById('warehouse-grid');
+  let h=`<div class="av-row">`;AVS_E.forEach(a=>h+=`<div class="av-num">${a}</div>`);h+=`<div class="sep-cell"></div>`;AVS_D.forEach(a=>h+=`<div class="av-num">${a}</div>`);h+=`</div>`;
+  RUAS.forEach(rua=>{h+=`<div class="rua-row"><div class="rua-lbl">${rua}</div>`;[...AVS_E,null,...AVS_D].forEach(av=>{if(av===null){h+=`<div class="sep-cell"></div>`;return;}const b=findB(rua,av);const bid=b?b.id:null;const tot=bid?totB(bid):0;const prod=bid?mainP(bid):null;const st=prod?ps(prod):{bg:'#22263a',border:'#2e3250',text:'#7a7f9a'};const isSel=selectedBloco&&b&&selectedBloco===b.id;const ls=bid?getBL(bid):[];h+=`<div class="cell${isSel?' selected':''}" data-rua="${rua}" data-av="${av}" style="background:${st.bg};border-color:${st.border}">`;if(tot>0&&ls.length){h+=`<div class="cell-lote" style="color:${st.text}">${ls[0].lote}</div>`;h+=`<div class="cell-prod" style="color:${st.text}">${prod}</div>`;h+=`<div class="cell-qty" style="color:${st.text}">${tot}</div>`;}h+=`</div>`;});h+=`</div>`;});h+=`<div class="inicio-bar">▲  INÍCIO / ENTRADA  ▲</div>`;grid.innerHTML=h;grid.querySelectorAll('.cell').forEach(el=>{el.addEventListener('click',()=>{const b=findB(el.dataset.rua,parseInt(el.dataset.av));if(!b){toast('Bloco não cadastrado.','err');return;}selectedBloco=b.id;actionTab='lotes';selectedLote=null;renderMapa();renderBlocoPanel();});});const panel=document.getElementById('bloco-panel');if(!selectedBloco){panel.classList.add('hidden');return;}renderBlocoPanel();
 }
 
-function showBloco(bid){
-  const b=blocos.find(x=>x.id===bid);
-  const ls=lotes.filter(x=>x.bloco_id===bid);
-  const tot=ls.reduce((s,l)=>s+l.fardos,0);
-  const livre=140-tot;
+function renderBlocoPanel(){
   const panel=document.getElementById('bloco-panel');
-  panel.innerHTML=`
-    <div class="panel">
-      <div style="margin-bottom:12px;">
-        <div style="font-size:16px;font-weight:700;">Rua ${b.rua} — Av ${b.avenida}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px;">${tot}/140 fardos · ${livre} livres</div>
-      </div>
-      ${ls.map(l=>`<div style="background:var(--bg);padding:8px;border-radius:8px;margin-bottom:6px;font-size:12px;"><strong>${l.lote}</strong> - ${l.produto} (${l.fardos})</div>`).join('')}
-    </div>
-  `;
+  const b=blocos.find(x=>x.id===selectedBloco);
+  if(!b){panel.classList.add('hidden');return;}
+  const tot=totB(b.id),livre=livB(b.id);
+  const p=Math.min(tot/b.capacidade,1);
+  const prod=mainP(b.id);
+  const cor=prod?ps(prod).dot:'#7a7f9a';
   panel.classList.remove('hidden');
+  panel.innerHTML=`<div class="panel"><div class="panel-head"><div><div class="panel-title">Rua ${b.rua} — Avenida ${b.avenida}</div><div class="panel-sub">${tot}/${b.capacidade} fardos · ${livre} livres</div></div><button class="btn btn-ghost" id="btn-close-panel" style="padding:6px 12px;font-size:12px;">✕</button></div><div class="prog-wrap"><div class="prog-fill" style="width:${p*100}%;background:${cor}"></div></div><div class="action-tabs"><button class="action-tab${actionTab==='lotes'?' active':''}" data-at="lotes">Lotes</button><button class="action-tab${actionTab==='entrada'?' active':''}" data-at="entrada">Entrada</button>${isAdmin()?`<button class="action-tab${actionTab==='saida'?' active':''}" data-at="saida">Saída</button>`:''}</div><div id="panel-body"></div></div>`;
+  document.getElementById('btn-close-panel').onclick=()=>{selectedBloco=null;panel.classList.add('hidden');renderMapa();};
+  panel.querySelectorAll('.action-tab').forEach(el=>{el.addEventListener('click',()=>{actionTab=el.dataset.at;selectedLote=null;renderBlocoPanel();});});
+  renderPanelBody(b,livre);
 }
 
-function renderHist(){
-  const h=document.getElementById('historico');
-  h.innerHTML=historico.map(x=>`
-    <div class="hist-item">
-      <span class="hist-badge ${x.acao==='ENTRADA'?'badge-in':'badge-out'}">${x.acao}</span>
-      <div class="hist-lote">${x.lote}</div>
-      <div class="hist-meta">Produto: ${x.produto||'—'}</div>
-      <div class="hist-meta">Usuário: ${x.usuario_nome}</div>
-      <div class="hist-meta">Data: ${new Date(x.quando).toLocaleString('pt-BR')}</div>
-      ${x.numero_nf?`<div class="hist-meta">NF: ${x.numero_nf}</div>`:''}
-      ${x.observacao?`<div class="hist-meta">📝 ${x.observacao}</div>`:''}
-      ${user.role==='admin'?`<div class="hist-actions"><button class="btn btn-sm btn-accent" onclick="openEditHist(${x.id})">Editar</button><button class="btn btn-sm btn-red" onclick="delHist(${x.id})">Excluir</button></div>`:''}
-    </div>
-  `).join('');
+function renderPanelBody(b,livre){
+  const body=document.getElementById('panel-body');
+  const ls=getBL(b.id);
+  if(actionTab==='lotes'){if(!ls.length){body.innerHTML=`<div class="empty-msg">Bloco vazio.</div>`;return;}body.innerHTML=ls.map(l=>{const st=ps(l.produto);return `<div class="lote-row" style="border-left:4px solid ${st.dot}"><div><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div></div><div class="lote-qty">${l.fardos}</div></div>`;}).join('');}
+  if(actionTab==='entrada'){body.innerHTML=`<div class="ff"><label>Número do lote</label><input id="f-lote" placeholder="ex: LINTER2025-L01"></div><div class="ff"><label>Produto</label><select id="f-prod"><option value="">Selecione o produto…</option>${PRODS.map(p=>`<option>${p}</option>`).join('')}</select></div><div class="ff"><label>Quantidade de fardos (máx. ${livre})</label><input id="f-fardos" type="number" min="1" max="${livre}" placeholder="${livre}"></div><div class="ff"><label>Número NF (opcional)</label><input id="f-nf" placeholder="NF de entrada"></div><div class="ff"><label>Observação (opcional)</label><textarea id="f-obs" placeholder="Ex: Carga do caminhão ABC-1234, campo norte…"></textarea></div><button class="btn btn-green btn-full" id="btn-entrada">📥 Registrar Entrada</button>`;document.getElementById('btn-entrada').onclick=async()=>{const lote=document.getElementById('f-lote').value.trim().toUpperCase();const prod=document.getElementById('f-prod').value;const n=parseInt(document.getElementById('f-fardos').value);const nf=document.getElementById('f-nf').value.trim()||null;const obs=document.getElementById('f-obs').value.trim()||null;if(!lote)return toast('Informe o número do lote.','err');if(!prod)return toast('Selecione o produto.','err');if(!n||n<=0)return toast('Quantidade inválida.','err');if(n>livre)return toast(`Espaço insuficiente. Livre: ${livre}.`,'err');if(ls.find(l=>l.lote===lote))return toast('Lote já existe neste bloco.','err');document.getElementById('btn-entrada').disabled=true;try{const {error:e1}=await sb.from('lotes').insert({bloco_id:b.id,lote,produto:prod,fardos:n});if(e1)throw e1;const {error:e2}=await sb.from('historico').insert({acao:'ENTRADA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});if(e2)throw e2;const {error:e3}=await sb.from('logs_operacoes').insert({operacao:'ENTRADA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,status:'SUCESSO'});if(e3)throw e3;await loadBlocos();await loadHistorico();toast(`✅ ${n} fardos de ${lote} registrados!`);actionTab='lotes';renderMapa();renderBlocoPanel();}catch{toast('Erro ao salvar.','err');}finally{const btn=document.getElementById('btn-entrada');if(btn)btn.disabled=false;}};}
+  if(actionTab==='saida'){if(!ls.length){body.innerHTML=`<div class="empty-msg">Nenhum lote para remover.</div>`;return;}const selObj=selectedLote?ls.find(l=>l.id===selectedLote):null;body.innerHTML=ls.map(l=>{const st=ps(l.produto);return `<div class="lote-row${selectedLote===l.id?' sel':''}" data-lid="${l.id}" style="border-left:4px solid ${st.dot}"><div><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div></div><div class="lote-qty">${l.fardos}</div></div>`;}).join('')+(selObj?`<div class="ff" style="margin-top:10px"><label>Quantidade a retirar (máx. ${selObj.fardos})</label><input id="f-sqtd" type="number" min="1" max="${selObj.fardos}" placeholder="${selObj.fardos}"></div><div class="ff"><label>Número NF (opcional)</label><input id="f-snf" placeholder="NF de saída"></div><div class="ff"><label>Observação (opcional)</label><textarea id="f-sobs" placeholder="Ex: Enviado para processamento, NF 12345…"></textarea></div><button class="btn btn-red btn-full" id="btn-saida">📤 Registrar Saída</button>`:'');body.querySelectorAll('[data-lid]').forEach(el=>{el.addEventListener('click',()=>{selectedLote=el.dataset.lid;renderBlocoPanel();});});if(selObj){document.getElementById('btn-saida').onclick=async()=>{const n=parseInt(document.getElementById('f-sqtd').value);const nf=document.getElementById('f-snf').value.trim()||null;const obs=document.getElementById('f-sobs').value.trim()||null;if(!n||n<=0)return toast('Quantidade inválida.','err');if(n>selObj.fardos)return toast(`Máximo: ${selObj.fardos}.`,'err');document.getElementById('btn-saida').disabled=true;try{if(n===selObj.fardos){await sb.from('lotes').delete().eq('id',selObj.id);}else{await sb.from('lotes').update({fardos:selObj.fardos-n}).eq('id',selObj.id);}const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});if(e1)throw e1;const {error:e2}=await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});if(e2)throw e2;await loadBlocos();await loadHistorico();toast(`✅ Saída de ${n} fardos registrada!`);selectedLote=null;actionTab='lotes';renderMapa();renderBlocoPanel();}catch{toast('Erro ao salvar.','err');}finally{const btn=document.getElementById('btn-saida');if(btn)btn.disabled=false;}};}}
 }
 
-function openEditHist(id){
-  editId=id;
-  const x=historico.find(h=>h.id===id);
-  if(!x)return;
-  document.getElementById('edt-obs').value=x.observacao||'';
-  document.getElementById('edt-nf').value=x.numero_nf||'';
+function renderHistorico(){
+  const inp=document.getElementById('hist-search');
+  const sel=document.getElementById('hist-filter');
+  inp.value=histSearch;sel.value=histFilter;
+  inp.oninput=e=>{histSearch=e.target.value;renderHistList();};
+  sel.onchange=e=>{histFilter=e.target.value;renderHistList();};
+  renderHistList();
+}
+function renderHistList(){
+  const el=document.getElementById('historico-list');
+  const q=histSearch.toUpperCase();
+  const lista=historico.filter(h=>{const mq=!q||h.lote?.toUpperCase().includes(q)||h.produto?.toUpperCase().includes(q)||h.usuario_nome?.toUpperCase().includes(q)||String(h.rua||'').includes(q)||String(h.avenida||'').includes(q);return mq&&(!histFilter||h.acao===histFilter);});
+  if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhum registro encontrado.</div>`;return;}
+  el.innerHTML=lista.slice(0,200).map(h=>{const st=ps(h.produto);const isEdited=h.editado_em?` <span class="audit-badge">✎ Editado</span>`:'';return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge ${h.acao==='ENTRADA'?'badge-in':'badge-out'}">${h.acao}</span><div class="hist-lote">${h.lote} <span style="font-size:11px;color:${st.dot};font-weight:600">${h.produto||''}</span>${isEdited}</div><div class="hist-meta">📍 Rua ${h.rua||'—'} · Av ${h.avenida||'—'}</div><div class="hist-meta">👤 <strong>${h.usuario_nome}</strong></div><div class="hist-meta">🕐 ${new Date(h.quando).toLocaleString('pt-BR')}</div>${h.numero_nf?`<div class="hist-meta">📄 NF: ${h.numero_nf}</div>`:''}</div><div class="hist-qty" style="color:${h.acao==='ENTRADA'?'var(--green2)':'var(--red2)'}">${h.acao==='ENTRADA'?'+':'-'}${h.fardos}</div></div>${h.observacao?`<div class="hist-obs">📝 ${h.observacao}</div>`:''}${isAdmin()?`<div class="hist-actions"><button class="btn-edit" onclick="openEditModal(${h.id})">Editar</button><button class="btn-delete" onclick="openDeleteModal(${h.id},${JSON.stringify(h.lote)},${h.fardos})">Excluir</button></div>`:''}`;}).join('');}
+
+function renderLocal(){
+  const ruaSel=document.getElementById('filter-rua');
+  const avSel=document.getElementById('filter-av');
+  if(ruaSel.children.length===1){RUAS.forEach(r=>ruaSel.innerHTML+=`<option>${r}</option>`);}
+  if(avSel.children.length===1){[...AVS_E,...AVS_D].forEach(a=>avSel.innerHTML+=`<option>${a}</option>`);}
+  document.getElementById('btn-filtrar-local').onclick=()=>renderLocalList();
+}
+function renderLocalList(){
+  const el=document.getElementById('local-list');
+  const rua=document.getElementById('filter-rua').value;
+  const av=document.getElementById('filter-av').value;
+  const dataInicio=document.getElementById('filter-data-inicio').value;
+  const dataFim=document.getElementById('filter-data-fim').value;
+  if(!rua||!av){el.innerHTML=`<div class="empty-msg">Selecione rua e avenida.</div>`;return;}
+  const lista=historico.filter(h=>{const matchLocal=h.rua===rua&&h.avenida===parseInt(av);if(!matchLocal)return false;if(dataInicio){const d=new Date(h.quando).getTime();const dInicio=new Date(dataInicio).getTime();if(d<dInicio)return false;}if(dataFim){const d=new Date(h.quando).getTime();const dFim=new Date(dataFim).getTime()+86400000;if(d>dFim)return false;}return true;});
+  if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhuma movimentação neste local no período.</div>`;return;}
+  el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;"><strong>Rua ${rua} — Avenida ${av}</strong><br>Total de movimentações: ${lista.length}</div>`+lista.map(h=>{const st=ps(h.produto);return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge ${h.acao==='ENTRADA'?'badge-in':'badge-out'}">${h.acao}</span><div class="hist-lote">${h.lote}</div><div class="hist-meta">Produto: <strong style="color:${st.dot}">${h.produto}</strong></div><div class="hist-meta">Usuario: <strong>${h.usuario_nome}</strong></div><div class="hist-meta">Data: <strong>${new Date(h.quando).toLocaleString('pt-BR')}</strong></div>${h.numero_nf?`<div class="hist-meta">📄 NF: ${h.numero_nf}</div>`:''}</div><div class="hist-qty" style="color:${h.acao==='ENTRADA'?'var(--green2)':'var(--red2)'}">${h.acao==='ENTRADA'?'+':'-'}${h.fardos}</div></div>${h.observacao?`<div class="hist-obs">📝 ${h.observacao}</div>`:''}`;}).join('');
+}
+
+function renderAuditoria(){
+  const inp=document.getElementById('audit-search');
+  const sel=document.getElementById('audit-filter');
+  inp.oninput=e=>{renderAuditList(e.target.value,sel.value);};
+  sel.onchange=e=>{renderAuditList(inp.value,e.target.value);};
+  renderAuditList('','');
+}
+function renderAuditList(q,type){
+  const el=document.getElementById('auditoria-list');
+  const lista=auditoria.filter(a=>{const mq=!q||a.usuario_nome?.toUpperCase().includes(q.toUpperCase())||a.tabela?.toUpperCase().includes(q.toUpperCase());return mq&&(!type||a.acao===type);});
+  if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhuma auditoria encontrada.</div>`;return;}
+  el.innerHTML=lista.map(a=>{return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge" style="background:#7F77DD44;border:1px solid #7F77DD;color:#AFA9EC">${a.acao}</span><div class="hist-lote">${a.tabela}</div><div class="hist-meta">Usuário: <strong>${a.usuario_nome}</strong></div><div class="hist-meta">Data: <strong>${new Date(a.criado_em).toLocaleString('pt-BR')}</strong></div></div></div><div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:8px;font-size:11px;color:var(--muted);"><strong>Antes:</strong> ${JSON.stringify(a.dados_antigos||{}).substring(0,100)}…<br><strong>Depois:</strong> ${JSON.stringify(a.dados_novos||{}).substring(0,100)}…</div>${a.motivo?`<div style="margin-top:8px;font-size:12px;color:#AFA9EC;font-style:italic;">Motivo: ${a.motivo}</div>`:''}`;}).join('');
+}
+
+function openEditModal(id){
+  editingId=id;
+  const h=historico.find(x=>x.id===id);
+  if(!h)return;
+  document.getElementById('edit-obs').value=h.observacao||'';
+  document.getElementById('edit-nf').value=h.numero_nf||'';
+  document.getElementById('edit-qtd').value='';
   document.getElementById('modal-edit').classList.add('show');
 }
-
-async function saveEdit(){
-  if(!editId)return;
+document.getElementById('btn-save-edit').onclick=async()=>{
+  const obs=document.getElementById('edit-obs').value.trim()||null;
+  const nf=document.getElementById('edit-nf').value.trim()||null;
+  const qtd=document.getElementById('edit-qtd').value?parseInt(document.getElementById('edit-qtd').value):null;
+  document.getElementById('btn-save-edit').disabled=true;
   try{
-    await sb.from('historico').update({observacao:document.getElementById('edt-obs').value||null,numero_nf:document.getElementById('edt-nf').value||null}).eq('id',editId);
-    await loadAll();renderHist();toast('Editado');closeModal();
-  }catch{err('Erro');}
-}
+    const h=historico.find(x=>x.id===editingId);
+    if(!h)throw new Error('Registro não encontrado');
+    const oldData={observacao:h.observacao,numero_nf:h.numero_nf,fardos:h.fardos};
+    const newData={observacao:obs,numero_nf:nf,fardos:qtd||h.fardos};
+    await sb.from('historico').update({observacao:obs,numero_nf:nf,fardos:qtd||h.fardos,editado_em:new Date().toISOString(),editado_por:currentUser.id}).eq('id',editingId);
+    if(qtd&&qtd!==h.fardos){const l=lotes.find(x=>x.lote===h.lote);if(l){await sb.from('lotes').update({fardos:qtd}).eq('id',l.id);}}
+    await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'historico',registro_id:editingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:oldData,dados_novos:newData});
+    await loadHistorico();await loadAuditoria();
+    toast('✅ Movimentação editada com sucesso!');
+    document.getElementById('modal-edit').classList.remove('show');
+    editingId=null;
+    if(histSearch||histFilter)renderHistList();
+  }catch(e){toast('Erro ao editar.','err');}
+  finally{document.getElementById('btn-save-edit').disabled=false;}
+};
+document.getElementById('btn-cancel-edit').onclick=()=>{document.getElementById('modal-edit').classList.remove('show');editingId=null;};
 
-async function delHist(id){
-  if(!confirm('Excluir?'))return;
-  try{
-    await sb.from('historico').delete().eq('id',id);
-    await loadAll();renderHist();toast('Excluído');
-  }catch{err('Erro');}
+function openDeleteModal(id,lote,qtd){
+  deletingId=id;
+  document.getElementById('delete-info').innerHTML=`<strong>${lote}</strong><br>${qtd} fardos`;
+  document.getElementById('delete-motivo').value='';
+  document.getElementById('modal-delete').classList.add('show');
 }
+document.getElementById('btn-confirm-delete').onclick=async()=>{
+  const motivo=document.getElementById('delete-motivo').value.trim()||'Sem motivo informado';
+  document.getElementById('btn-confirm-delete').disabled=true;
+  try{
+    const h=historico.find(x=>x.id===deletingId);
+    if(!h)throw new Error('Registro não encontrado');
+    const dados={...h};
+    await sb.from('historico').delete().eq('id',deletingId);
+    if(h.acao==='SAIDA'){const l=lotes.find(x=>x.lote===h.lote);if(l){await sb.from('lotes').update({fardos:l.fardos+h.fardos}).eq('id',l.id);}}
+    await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'historico',registro_id:deletingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:dados,dados_novos:null,motivo});
+    await loadHistorico();await loadAuditoria();
+    toast('✅ Movimentação excluída e registrada na auditoria!');
+    document.getElementById('modal-delete').classList.remove('show');
+    deletingId=null;
+    if(histSearch||histFilter)renderHistList();
+  }catch(e){toast('Erro ao excluir.','err');}
+  finally{document.getElementById('btn-confirm-delete').disabled=false;}
+};
+document.getElementById('btn-cancel-delete').onclick=()=>{document.getElementById('modal-delete').classList.remove('show');deletingId=null;};
 
 function renderAdmin(){
-  const u=document.getElementById('users-list');
-  u.innerHTML=usuarios.map(x=>`
-    <div class="user-item">
-      <div class="user-info"><div class="user-name">${x.nome}</div><div class="user-role">${x.login} • ${x.role}</div></div>
-      <button class="btn btn-sm btn-ghost" onclick="openEditUser(${x.id})">✎</button>
-      <button class="btn btn-sm btn-ghost" onclick="delUser(${x.id})">🗑️</button>
-    </div>
-  `).join('');
+  const el=document.getElementById('admin-users');
+  el.innerHTML=usuarios.map(u=>`<div class="user-row"><div><div style="font-size:14px;font-weight:700">${u.nome}</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Login: ${u.login}</div></div><span class="role-badge ${u.role==='admin'?'role-admin':'role-op'}">${u.role}</span></div>`).join('');
+  document.getElementById('btn-add-user').onclick=async()=>{
+    const nome=document.getElementById('nu-nome').value.trim();
+    const login=document.getElementById('nu-login').value.trim().toLowerCase();
+    const senha=document.getElementById('nu-senha').value;
+    const role=document.getElementById('nu-role').value;
+    if(!nome||!login||!senha)return toast('Preencha todos os campos.','err');
+    document.getElementById('btn-add-user').disabled=true;
+    try{const {error}=await sb.from('usuarios').insert({nome,login,senha,role});if(error){toast('Erro: login já existe.','err');return;}await loadUsuarios();toast('✅ Usuário adicionado!');renderAdmin();document.getElementById('nu-nome').value='';document.getElementById('nu-login').value='';document.getElementById('nu-senha').value='';}catch{toast('Erro ao salvar.','err');}
+    finally{document.getElementById('btn-add-user').disabled=false;}
+  };
 }
-
-function openEditUser(id){
-  editUserId=id;
-  const x=usuarios.find(u=>u.id===id);
-  if(!x)return;
-  document.getElementById('edt-nome').value=x.nome;
-  document.getElementById('edt-login').value=x.login;
-  document.getElementById('edt-senha').value='';
-  document.getElementById('edt-role').value=x.role;
-  document.getElementById('modal-user').classList.add('show');
-}
-
-async function saveUser(){
-  if(!editUserId)return;
-  const upd={nome:document.getElementById('edt-nome').value,login:document.getElementById('edt-login').value,role:document.getElementById('edt-role').value};
-  const pwd=document.getElementById('edt-senha').value;
-  if(pwd)upd.senha=pwd;
-  try{
-    await sb.from('usuarios').update(upd).eq('id',editUserId);
-    await loadAll();renderAdmin();toast('Usuário atualizado');closeModal();
-  }catch{err('Erro');}
-}
-
-async function delUser(id){
-  if(!confirm('Excluir usuário?'))return;
-  try{
-    await sb.from('usuarios').delete().eq('id',id);
-    await loadAll();renderAdmin();toast('Excluído');
-  }catch{err('Erro');}
-}
-
-async function addUser(){
-  const nome=document.getElementById('nu-nome').value;
-  const login=document.getElementById('nu-login').value;
-  const senha=document.getElementById('nu-senha').value;
-  const role=document.getElementById('nu-role').value;
-  if(!nome||!login||!senha){err('Preencha tudo');return;}
-  try{
-    await sb.from('usuarios').insert({nome,login,senha,role});
-    await loadAll();renderAdmin();toast('Adicionado');
-    document.getElementById('nu-nome').value='';
-    document.getElementById('nu-login').value='';
-    document.getElementById('nu-senha').value='';
-  }catch{err('Erro');}
-}
-
-function closeModal(){document.querySelectorAll('.modal').forEach(x=>x.classList.remove('show'));editId=null;editUserId=null;}
-document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
 </script>
 </body>
 </html>
