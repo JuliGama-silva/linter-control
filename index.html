@@ -321,7 +321,7 @@ async function doLogin(){
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-screen').classList.remove('hidden');
     document.getElementById('topbar-user').textContent=data.nome;
-    document.getElementById('topbar-role').textContent=data.role===('admin')?'Administrador':'Operador';
+    document.getElementById('topbar-role').textContent=data.role==='admin'?'Administrador':'Operador';
     if(!isAdmin()){document.getElementById('nav-audit').classList.add('hidden-nav');document.getElementById('nav-admin').classList.add('hidden-nav');}
     await loadAll();showTab('mapa');
   }catch{err.textContent='Erro de conexão.';err.classList.remove('hidden');}
