@@ -514,20 +514,133 @@ function renderHistList(){
 function renderLocal(){
   const ruaSel=document.getElementById('filter-rua');
   const avSel=document.getElementById('filter-av');
-  if(ruaSel.children.length===1){RUAS.forEach(r=>ruaSel.innerHTML+=`<option>${r}</option>`);}
-  if(avSel.children.length===1){[...AVS_E,...AVS_D].forEach(a=>avSel.innerHTML+=`<option>${a}</option>`);}
+  if(ruaSel.children.length===1){
+    RUAS.forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=`Rua ${r}`;ruaSel.appendChild(o);});
+  }
+  if(avSel.children.length===1){
+    [...AVS_E,...AVS_D].forEach(a=>{const o=document.createElement('option');o.value=String(a);o.textContent=`Av ${a}`;avSel.appendChild(o);});
+  }
   document.getElementById('btn-filtrar-local').onclick=()=>renderLocalList();
 }
-function renderLocalList(){
+
+async function renderLocalList(){
   const el=document.getElementById('local-list');
   const rua=document.getElementById('filter-rua').value;
-  const av=document.getElementById('filter-av').value;
+  const av=document.getElementById('filter-av').value;        // sempre string do <select>
   const dataInicio=document.getElementById('filter-data-inicio').value;
   const dataFim=document.getElementById('filter-data-fim').value;
-  if(!rua||!av){el.innerHTML=`<div class="empty-msg">Selecione rua e avenida.</div>`;return;}
-  const lista=historico.filter(h=>{const matchLocal=h.rua===rua&&h.avenida===parseInt(av);if(!matchLocal)return false;if(dataInicio){const d=new Date(h.quando).getTime();const dInicio=new Date(dataInicio).getTime();if(d<dInicio)return false;}if(dataFim){const d=new Date(h.quando).getTime();const dFim=new Date(dataFim).getTime()+86400000;if(d>dFim)return false;}return true;});
-  if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhuma movimentação neste local no período.</div>`;return;}
-  el.innerHTML=`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;"><strong>Rua ${rua} — Avenida ${av}</strong><br>Total de movimentações: ${lista.length}</div>`+lista.map(h=>{const st=ps(h.produto);return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge ${h.acao==='ENTRADA'?'badge-in':'badge-out'}">${h.acao}</span><div class="hist-lote">${h.lote}</div><div class="hist-meta">Produto: <strong style="color:${st.dot}">${h.produto}</strong></div><div class="hist-meta">Usuario: <strong>${h.usuario_nome}</strong></div><div class="hist-meta">Data: <strong>${new Date(h.quando).toLocaleString('pt-BR')}</strong></div>${h.numero_nf?`<div class="hist-meta">📄 NF: ${h.numero_nf}</div>`:''}</div><div class="hist-qty" style="color:${h.acao==='ENTRADA'?'var(--green2)':'var(--red2)'}">${h.acao==='ENTRADA'?'+':'-'}${h.fardos}</div></div>${h.observacao?`<div class="hist-obs">📝 ${h.observacao}</div>`:''}`;}).join('');
+
+  // ── LOG DE DIAGNÓSTICO (temporário) ──────────────────────────
+  console.group('[LOCAL] Diagnóstico de filtro');
+  console.log('Filtros recebidos →', {rua, av, dataInicio, dataFim});
+  console.log('historico em memória:', historico.length, 'registros');
+  if(historico.length){
+    const tipos=new Set(historico.map(h=>typeof h.avenida));
+    console.log('Tipo de h.avenida no array:', [...tipos]);
+    console.log('Amostra de rua+avenida:', historico.slice(0,3).map(h=>({rua:h.rua,avenida:h.avenida,tipo:typeof h.avenida})));
+  }
+  console.groupEnd();
+  // ─────────────────────────────────────────────────────────────
+
+  if(!rua||!av){
+    el.innerHTML=`<div class="empty-msg">Selecione rua e avenida para pesquisar.</div>`;
+    return;
+  }
+
+  el.innerHTML=`<div class="empty-msg">🔍 Buscando movimentações em Rua ${rua} · Av ${av}…</div>`;
+
+  try{
+    // ── BUG #2 CORRIGIDO: consulta direta ao Supabase, sem limite de memória ──
+    let q=sb.from('historico')
+      .select('*')
+      .eq('rua', rua)
+      .order('quando',{ascending:false});
+
+    // ── BUG #3 CORRIGIDO: datas como string ISO sem conversão UTC ──
+    if(dataInicio) q=q.gte('quando', dataInicio+'T00:00:00');
+    if(dataFim)    q=q.lte('quando', dataFim+'T23:59:59');
+
+    const {data:todos, error}=await q;
+
+    // LOG do retorno do banco
+    console.group('[LOCAL] Retorno do banco');
+    console.log(`Registros para Rua ${rua}:`, todos?.length??'erro', error?`ERRO: ${error.message}`:'OK');
+    if(todos?.length){
+      const avTipos=new Set(todos.map(h=>typeof h.avenida));
+      const avVals=[...new Set(todos.map(h=>h.avenida))].sort();
+      console.log('Tipo do campo avenida no banco:', [...avTipos]);
+      console.log('Valores de avenida encontrados:', avVals);
+      console.log(`Buscando avenida "${av}" (string) — comparação type-safe`);
+    }
+    console.groupEnd();
+
+    if(error){
+      el.innerHTML=`<div class="empty-msg">❌ Erro ao consultar o banco: ${error.message}</div>`;
+      return;
+    }
+
+    // ── BUG #1 CORRIGIDO: comparação type-safe (String x String) ──
+    // Converte ambos para string antes de comparar → funciona com INTEGER e TEXT no banco
+    const lista=(todos||[]).filter(h=>String(h.avenida)===String(av));
+
+    console.log(`[LOCAL] Após filtro de avenida "${av}":`, lista.length, 'registros');
+
+    // Descrição legível dos filtros usados
+    const descs=[];
+    descs.push(`Rua ${rua} — Avenida ${av}`);
+    if(dataInicio) descs.push(`a partir de ${new Date(dataInicio+'T00:00:00').toLocaleDateString('pt-BR')}`);
+    if(dataFim)    descs.push(`até ${new Date(dataFim+'T23:59:59').toLocaleDateString('pt-BR')}`);
+    const descFiltros=descs.join('  ·  ');
+
+    if(!lista.length){
+      el.innerHTML=`
+        <div class="empty-msg" style="padding:28px 20px;">
+          <div style="font-size:28px;margin-bottom:10px;">📭</div>
+          <div style="font-weight:700;margin-bottom:6px;">Nenhuma movimentação encontrada</div>
+          <div style="font-size:12px;color:var(--muted);">Filtro aplicado: <strong>${descFiltros}</strong></div>
+          ${dataInicio||dataFim?'<div style="font-size:11px;color:var(--muted);margin-top:4px;">Tente ampliar o período ou remover as datas.</div>':''}
+        </div>`;
+      return;
+    }
+
+    // ── DISPLAY COMPLETO com todos os campos solicitados ──
+    el.innerHTML=`
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:15px;font-weight:800;color:var(--accent2);">📍 ${descs[0]}</div>
+        ${descs.length>1?`<div style="font-size:11px;color:var(--muted);margin-top:3px;">${descs.slice(1).join(' · ')}</div>`:''}
+        <div style="display:flex;gap:14px;margin-top:8px;">
+          <span style="font-size:12px;color:var(--green2);">▲ Entradas: <strong>${lista.filter(h=>h.acao==='ENTRADA').reduce((s,h)=>s+h.fardos,0)}</strong></span>
+          <span style="font-size:12px;color:var(--red2);">▼ Saídas: <strong>${lista.filter(h=>h.acao==='SAIDA').reduce((s,h)=>s+h.fardos,0)}</strong></span>
+          <span style="font-size:12px;color:var(--muted);">Total: <strong>${lista.length}</strong> mov.</span>
+        </div>
+      </div>
+    `+lista.map(h=>{
+      const st=ps(h.produto);
+      const dt=new Date(h.quando);
+      const data=dt.toLocaleDateString('pt-BR');
+      const hora=dt.toLocaleTimeString('pt-BR');
+      return `<div class="hist-row">
+        <div class="hist-top">
+          <div style="flex:1">
+            <span class="badge ${h.acao==='ENTRADA'?'badge-in':'badge-out'}">${h.acao==='ENTRADA'?'ENTRADA':'SAÍDA'}</span>
+            <div class="hist-lote" style="margin-top:5px;">${h.lote||'—'}</div>
+            <div class="hist-meta" style="color:${st.dot};font-weight:600;margin-top:2px;">${h.produto||'—'}</div>
+            <div class="hist-meta">📅 <strong>${data}</strong> &nbsp;🕐 ${hora}</div>
+            <div class="hist-meta">👤 <strong>${h.usuario_nome||'—'}</strong></div>
+            ${h.numero_nf?`<div class="hist-meta">📄 NF: <strong>${h.numero_nf}</strong></div>`:''}
+          </div>
+          <div class="hist-qty" style="color:${h.acao==='ENTRADA'?'var(--green2)':'var(--red2)'};font-size:20px;">
+            ${h.acao==='ENTRADA'?'+':'-'}${h.fardos}
+          </div>
+        </div>
+        ${h.observacao?`<div class="hist-obs">📝 ${h.observacao}</div>`:''}
+      </div>`;
+    }).join('');
+
+  }catch(e){
+    console.error('[LOCAL] Erro inesperado:', e);
+    el.innerHTML=`<div class="empty-msg">❌ Erro inesperado: ${e.message}</div>`;
+  }
 }
 
 function renderAuditoria(){
