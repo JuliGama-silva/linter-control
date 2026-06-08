@@ -7,6 +7,7 @@
   <title>Linter Control</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23BA7517'/><text x='50' y='68' font-size='56' text-anchor='middle'>🌾</text></svg>"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root{--bg:#0f1117;--surface:#1a1d27;--card:#22263a;--border:#2e3250;--accent:#BA7517;--accent2:#FAC775;--green:#3B6D11;--green2:#97C459;--red:#A32D2D;--red2:#F09595;--blue2:#85B7EB;--text:#eef0f7;--muted:#7a7f9a;--font:'Segoe UI',system-ui,sans-serif;}
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -118,6 +119,13 @@
     .prod-qty{font-size:26px;font-weight:800;}
     .prod-meta{font-size:11px;color:var(--muted);margin-top:4px;}
     .zerado-alert{display:inline-block;background:#A32D2D44;border:1px solid #A32D2D;color:var(--red2);font-size:10px;font-weight:800;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;margin-top:6px;}
+    .export-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;}
+    .export-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;margin-bottom:10px;color:var(--text);font-size:13px;font-weight:700;}
+    .export-toggle:hover{border-color:var(--accent);}
+    .export-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+    .export-grid .ff{margin:0;}
+    .btn-xlsx{background:linear-gradient(135deg,#3B6D11,#639922);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;padding:13px;width:100%;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s;}
+    .btn-xlsx:disabled{opacity:.5;cursor:not-allowed;}
     #toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;}
     #toast.show{opacity:1;}
     #toast.ok{border-color:var(--green2);color:var(--green2);}
@@ -186,6 +194,40 @@
           <option value="SAIDA">Saídas</option>
         </select>
       </div>
+
+      <!-- painel de exportação -->
+      <button class="export-toggle" id="btn-toggle-export">
+        <span>📊 Exportar para Excel</span><span id="exp-arrow">▼</span>
+      </button>
+      <div id="export-panel" class="export-panel hidden">
+        <div class="sec-title" style="margin-bottom:12px;color:var(--accent2);">Filtros de exportação</div>
+        <div class="export-grid">
+          <div class="ff"><label>Data início</label><input id="exp-dt-ini" type="date" class="hist-input" style="width:100%;padding:10px 10px;"></div>
+          <div class="ff"><label>Data fim</label><input id="exp-dt-fim" type="date" class="hist-input" style="width:100%;padding:10px 10px;"></div>
+        </div>
+        <div class="export-grid">
+          <div class="ff"><label>Produto</label>
+            <select id="exp-prod" class="hist-input" style="width:100%;">
+              <option value="">Todos</option>
+              <option>Linter</option><option>Fibrilha</option><option>Algodãozinho</option><option>Fibrilha Torre</option>
+            </select>
+          </div>
+          <div class="ff"><label>Tipo</label>
+            <select id="exp-tipo" class="hist-input" style="width:100%;">
+              <option value="">Todos</option>
+              <option value="ENTRADA">Entrada</option>
+              <option value="SAIDA">Saída</option>
+            </select>
+          </div>
+        </div>
+        <div class="ff" style="margin-bottom:12px;"><label>Usuário</label>
+          <input id="exp-user" class="hist-input" style="width:100%;" placeholder="Filtrar por usuário…">
+        </div>
+        <button class="btn-xlsx" id="btn-export-xlsx">
+          <span>⬇</span><span id="exp-btn-label">Baixar .xlsx</span>
+        </button>
+      </div>
+
       <div id="historico-list"></div>
     </div>
 
@@ -398,6 +440,7 @@ function renderHistorico(){
   inp.value=histSearch;sel.value=histFilter;
   inp.oninput=e=>{histSearch=e.target.value;renderHistList();};
   sel.onchange=e=>{histFilter=e.target.value;renderHistList();};
+  initExportPanel();
   renderHistList();
 }
 function renderHistList(){
@@ -559,6 +602,241 @@ function renderAdmin(){
     try{const {error}=await sb.from('usuarios').insert({nome,login,senha,role});if(error){toast('Erro: login já existe.','err');return;}await loadUsuarios();toast('✅ Usuário adicionado!');renderAdmin();document.getElementById('nu-nome').value='';document.getElementById('nu-login').value='';document.getElementById('nu-senha').value='';}catch{toast('Erro ao salvar.','err');}
     finally{document.getElementById('btn-add-user').disabled=false;}
   };
+}
+
+/* ============================================================
+   EXPORTAÇÃO PARA EXCEL
+   ============================================================ */
+
+let _exportPanelOpen = false;
+
+function initExportPanel(){
+  const btn = document.getElementById('btn-toggle-export');
+  if(!btn) return;
+  btn.onclick = () => {
+    _exportPanelOpen = !_exportPanelOpen;
+    document.getElementById('export-panel').classList.toggle('hidden', !_exportPanelOpen);
+    document.getElementById('exp-arrow').textContent = _exportPanelOpen ? '▲' : '▼';
+  };
+  document.getElementById('btn-export-xlsx').onclick = exportarExcel;
+}
+
+/* Busca todos os registros do histórico no Supabase com paginação
+   para não travar em grandes volumes */
+async function fetchTodosHistorico(produtoFiltro){
+  const batch = 1000;
+  let from = 0;
+  let todos = [];
+  while(true){
+    let q = sb.from('historico')
+      .select('*')
+      .order('quando', {ascending: true})
+      .range(from, from + batch - 1);
+    if(produtoFiltro) q = q.eq('produto', produtoFiltro);
+    const {data, error} = await q;
+    if(error) throw new Error('Erro ao buscar dados: ' + error.message);
+    if(!data || data.length === 0) break;
+    todos = todos.concat(data);
+    if(data.length < batch) break;   // última página
+    from += batch;
+  }
+  return todos;
+}
+
+/* Calcula o saldo acumulado por produto a partir do histórico
+   ordenado crescentemente (saldo é o estoque APÓS cada movimentação) */
+function calcularSaldos(registros){
+  const saldos = {};
+  return registros.map(h => {
+    if(saldos[h.produto] === undefined) saldos[h.produto] = 0;
+    if(h.acao === 'ENTRADA')      saldos[h.produto] += h.fardos;
+    else if(h.acao === 'SAIDA')   saldos[h.produto] = Math.max(0, saldos[h.produto] - h.fardos);
+    return {...h, saldo_pos: saldos[h.produto]};
+  });
+}
+
+/* Aplica a cor de fundo a uma linha da planilha (verde/vermelho claro) */
+function linhaStyle(acao){
+  const cor = acao === 'ENTRADA' ? 'FFE6F4E6' : 'FFFDE8E8';
+  return {fill:{patternType:'solid', fgColor:{rgb: cor}}};
+}
+
+async function exportarExcel(){
+  if(typeof XLSX === 'undefined'){
+    toast('Biblioteca XLSX não carregada. Verifique a conexão.','err');
+    return;
+  }
+  const btn    = document.getElementById('btn-export-xlsx');
+  const label  = document.getElementById('exp-btn-label');
+  btn.disabled = true;
+  label.textContent = 'Buscando dados…';
+
+  try{
+    /* --- filtros do painel --- */
+    const produto  = document.getElementById('exp-prod').value;
+    const tipo     = document.getElementById('exp-tipo').value;
+    const usuario  = document.getElementById('exp-user').value.trim().toLowerCase();
+    const dtIni    = document.getElementById('exp-dt-ini').value;   // 'YYYY-MM-DD'
+    const dtFim    = document.getElementById('exp-dt-fim').value;
+
+    /* --- busca paginada (saldo calculado a partir do histórico completo do produto) --- */
+    label.textContent = 'Calculando saldos…';
+    const todos = await fetchTodosHistorico(produto);  // já filtrado por produto se selecionado
+    if(!todos.length){ toast('Nenhum registro encontrado no banco.','err'); return; }
+
+    const comSaldo = calcularSaldos(todos);            // saldo após cada movimentação
+
+    /* --- aplica filtros de exibição (tipo, usuário, período) --- */
+    const filtrado = comSaldo.filter(h => {
+      if(tipo    && h.acao !== tipo) return false;
+      if(usuario && !(h.usuario_nome||'').toLowerCase().includes(usuario)) return false;
+      if(dtIni){
+        const ini = new Date(dtIni + 'T00:00:00');
+        if(new Date(h.quando) < ini) return false;
+      }
+      if(dtFim){
+        const fim = new Date(dtFim + 'T23:59:59');
+        if(new Date(h.quando) > fim) return false;
+      }
+      return true;
+    });
+
+    if(!filtrado.length){ toast('Nenhum registro com esses filtros.','err'); return; }
+
+    label.textContent = 'Gerando planilha…';
+
+    /* ====== PLANILHA 1 — HISTÓRICO ====== */
+    const COLS = [
+      'DATA','HORA','PRODUTO','LOTE','TIPO',
+      'QUANTIDADE','SALDO ESTOQUE','RUA','AVENIDA',
+      'NÚMERO NF','OBSERVAÇÃO','USUÁRIO RESPONSÁVEL'
+    ];
+
+    const headerStyle = {
+      font : {bold:true, color:{rgb:'FF0F1117'}, sz:10},
+      fill : {patternType:'solid', fgColor:{rgb:'FFBA7517'}},
+      alignment: {horizontal:'center', vertical:'center', wrapText:true},
+      border: {bottom:{style:'medium', color:{rgb:'FF884000'}}}
+    };
+
+    /* Monta array de arrays: linha 0 = cabeçalhos */
+    const aoaData = [COLS];
+
+    filtrado.forEach(h => {
+      const dt   = new Date(h.quando);
+      const data = dt.toLocaleDateString('pt-BR');   // DD/MM/AAAA
+      const hora = dt.toLocaleTimeString('pt-BR');    // HH:MM:SS
+      aoaData.push([
+        data,
+        hora,
+        h.produto      || '',
+        h.lote         || '',
+        h.acao === 'ENTRADA' ? 'Entrada' : 'Saída',
+        h.fardos,
+        h.saldo_pos,
+        h.rua          || '',
+        h.avenida      || '',
+        h.numero_nf    || '',
+        h.observacao   || '',
+        h.usuario_nome || ''
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoaData);
+
+    /* Estilo do cabeçalho (linha 1) */
+    COLS.forEach((_,ci) => {
+      const addr = XLSX.utils.encode_cell({r:0, c:ci});
+      if(ws[addr]) ws[addr].s = headerStyle;
+    });
+
+    /* Estilo verde/vermelho por tipo nas linhas de dados */
+    filtrado.forEach((h, ri) => {
+      const rowIdx = ri + 1;  // linha 0 = cabeçalho
+      COLS.forEach((_,ci) => {
+        const addr = XLSX.utils.encode_cell({r:rowIdx, c:ci});
+        if(ws[addr]) ws[addr].s = linhaStyle(h.acao);
+      });
+    });
+
+    /* Larguras de coluna (caracteres) */
+    ws['!cols'] = [
+      {wch:12}, // DATA
+      {wch:10}, // HORA
+      {wch:18}, // PRODUTO
+      {wch:22}, // LOTE
+      {wch:10}, // TIPO
+      {wch:12}, // QUANTIDADE
+      {wch:15}, // SALDO ESTOQUE
+      {wch: 6}, // RUA
+      {wch: 9}, // AVENIDA
+      {wch:16}, // NÚMERO NF
+      {wch:38}, // OBSERVAÇÃO
+      {wch:24}, // USUÁRIO
+    ];
+
+    /* Congelar primeira linha e habilitar auto-filtro */
+    ws['!views']      = [{state:'frozen', ySplit:1}];
+    ws['!autofilter'] = {ref: `A1:L1`};
+
+    /* ====== PLANILHA 2 — RESUMO ====== */
+    const resumoStyle = {font:{bold:true}, fill:{patternType:'solid', fgColor:{rgb:'FF1A1D27'}}, font2:{color:{rgb:'FFFAC775'}}};
+    const resumoHeader = {
+      font : {bold:true, color:{rgb:'FF0F1117'}},
+      fill : {patternType:'solid', fgColor:{rgb:'FFBA7517'}},
+      alignment: {horizontal:'center'}
+    };
+
+    /* Totais por produto a partir dos dados filtrados */
+    const totais = {};
+    PRODS.forEach(p => totais[p] = {entradas:0, saidas:0});
+    filtrado.forEach(h => {
+      if(!totais[h.produto]) totais[h.produto] = {entradas:0, saidas:0};
+      if(h.acao==='ENTRADA') totais[h.produto].entradas += h.fardos;
+      else                   totais[h.produto].saidas   += h.fardos;
+    });
+
+    /* Saldo atual do lotes (fonte de verdade) */
+    const saldoAtual = {};
+    PRODS.forEach(p => saldoAtual[p] = 0);
+    lotes.forEach(l => { if(saldoAtual[l.produto]!==undefined) saldoAtual[l.produto] += l.fardos; });
+
+    const resumoAoa = [
+      ['PRODUTO','ENTRADAS (PERÍODO)','SAÍDAS (PERÍODO)','SALDO ATUAL EM ESTOQUE'],
+      ...Object.keys(totais).map(p => [p, totais[p].entradas, totais[p].saidas, saldoAtual[p]||0]),
+      [],
+      ['Exportado em', new Date().toLocaleString('pt-BR'), '', ''],
+      ['Total de linhas', filtrado.length, '', ''],
+    ];
+
+    const wsR = XLSX.utils.aoa_to_sheet(resumoAoa);
+    const resumoCols = ['PRODUTO','ENTRADAS (PERÍODO)','SAÍDAS (PERÍODO)','SALDO ATUAL EM ESTOQUE'];
+    resumoCols.forEach((_,ci) => {
+      const addr = XLSX.utils.encode_cell({r:0, c:ci});
+      if(wsR[addr]) wsR[addr].s = resumoHeader;
+    });
+    wsR['!cols'] = [{wch:22},{wch:22},{wch:20},{wch:26}];
+
+    /* ====== MONTAR WORKBOOK E BAIXAR ====== */
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws,  'Histórico');
+    XLSX.utils.book_append_sheet(wb, wsR, 'Resumo');
+
+    const agora = new Date();
+    const tag   = `${agora.getFullYear()}${String(agora.getMonth()+1).padStart(2,'0')}${String(agora.getDate()).padStart(2,'0')}`;
+    const nome  = `linter_historico_${tag}.xlsx`;
+
+    XLSX.writeFile(wb, nome, {bookType:'xlsx', cellStyles:true});
+
+    toast(`✅ ${filtrado.length} movimentações exportadas!`);
+
+  }catch(e){
+    toast('Erro ao exportar: ' + e.message, 'err');
+    console.error(e);
+  }finally{
+    btn.disabled    = false;
+    label.textContent = 'Baixar .xlsx';
+  }
 }
 </script>
 </body>
