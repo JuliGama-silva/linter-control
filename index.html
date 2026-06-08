@@ -108,6 +108,16 @@
     .role-op{background:#185FA533;color:var(--blue2);border:1px solid #185FA566;}
     .divider{height:1px;background:var(--border);margin:16px 0;}
     .empty-msg{text-align:center;color:var(--muted);font-size:13px;padding:32px;}
+    .estoque-total{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px;text-align:center;}
+    .estoque-total .et-num{font-size:32px;font-weight:800;color:var(--accent2);}
+    .estoque-total .et-lbl{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+    .prod-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;border-left:5px solid var(--border);}
+    .prod-card.zerado{border-color:var(--red);background:#A32D2D14;}
+    .prod-head{display:flex;justify-content:space-between;align-items:center;}
+    .prod-name{font-size:15px;font-weight:700;}
+    .prod-qty{font-size:26px;font-weight:800;}
+    .prod-meta{font-size:11px;color:var(--muted);margin-top:4px;}
+    .zerado-alert{display:inline-block;background:#A32D2D44;border:1px solid #A32D2D;color:var(--red2);font-size:10px;font-weight:800;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;margin-top:6px;}
     #toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;z-index:999;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;}
     #toast.show{opacity:1;}
     #toast.ok{border-color:var(--green2);color:var(--green2);}
@@ -159,6 +169,11 @@
       </div>
       <div class="map-wrap"><div class="map-inner" id="warehouse-grid"></div></div>
       <div id="bloco-panel" class="hidden"></div>
+    </div>
+
+    <div id="tab-estoque" class="hidden">
+      <div class="sec-header"><h2>Estoque</h2><p>Saldo atual por produto e por lote</p></div>
+      <div id="estoque-list"></div>
     </div>
 
     <div id="tab-historico" class="hidden">
@@ -223,6 +238,7 @@
 
   <nav class="nav-bar">
     <button class="nav-item active" data-tab="mapa"><span class="ni">🗺️</span>Mapa</button>
+    <button class="nav-item" data-tab="estoque"><span class="ni">📦</span>Estoque</button>
     <button class="nav-item" data-tab="historico"><span class="ni">📋</span>Histórico</button>
     <button class="nav-item" data-tab="local"><span class="ni">📍</span>Por Local</button>
     <button class="nav-item" id="nav-audit" data-tab="auditoria"><span class="ni">🔍</span>Auditoria</button>
@@ -235,7 +251,7 @@
     <div class="modal-title">Editar movimentação</div>
     <div class="ff"><label>Observação</label><textarea id="edit-obs" placeholder="Atualizar observação…"></textarea></div>
     <div class="ff"><label>Número NF</label><input id="edit-nf" placeholder="NF da movimentação"></div>
-    <div class="ff"><label>Quantidade (se necessário)</label><input id="edit-qtd" type="number" placeholder="Deixar em branco para não alterar"></div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4;">A quantidade não é editável aqui para preservar a consistência do saldo. Para corrigir a quantidade, exclua a movimentação (o estoque é ajustado automaticamente) e registre novamente.</p>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-green btn-full" id="btn-save-edit">Salvar edição</button>
       <button class="btn btn-ghost btn-full" id="btn-cancel-edit">Cancelar</button>
@@ -331,7 +347,7 @@ async function doLogin(){
 function doLogout(){currentUser=null;blocos=[];lotes=[];historico=[];document.getElementById('app-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden');document.getElementById('li-pass').value='';}
 
 document.querySelectorAll('.nav-item').forEach(el=>el.addEventListener('click',()=>showTab(el.dataset.tab)));
-function showTab(tab){selectedBloco=null;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));['mapa','historico','local','auditoria','admin'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));if(tab==='mapa')renderMapa();if(tab==='historico')renderHistorico();if(tab==='local')renderLocal();if(tab==='auditoria')renderAuditoria();if(tab==='admin')renderAdmin();}
+function showTab(tab){selectedBloco=null;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));['mapa','estoque','historico','local','auditoria','admin'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));if(tab==='mapa')renderMapa();if(tab==='estoque')renderEstoque();if(tab==='historico')renderHistorico();if(tab==='local')renderLocal();if(tab==='auditoria')renderAuditoria();if(tab==='admin')renderAdmin();}
 
 function renderMapa(){
   const grid=document.getElementById('warehouse-grid');
@@ -348,7 +364,7 @@ function renderBlocoPanel(){
   const prod=mainP(b.id);
   const cor=prod?ps(prod).dot:'#7a7f9a';
   panel.classList.remove('hidden');
-  panel.innerHTML=`<div class="panel"><div class="panel-head"><div><div class="panel-title">Rua ${b.rua} — Avenida ${b.avenida}</div><div class="panel-sub">${tot}/${b.capacidade} fardos · ${livre} livres</div></div><button class="btn btn-ghost" id="btn-close-panel" style="padding:6px 12px;font-size:12px;">✕</button></div><div class="prog-wrap"><div class="prog-fill" style="width:${p*100}%;background:${cor}"></div></div><div class="action-tabs"><button class="action-tab${actionTab==='lotes'?' active':''}" data-at="lotes">Lotes</button><button class="action-tab${actionTab==='entrada'?' active':''}" data-at="entrada">Entrada</button>${isAdmin()?`<button class="action-tab${actionTab==='saida'?' active':''}" data-at="saida">Saída</button>`:''}</div><div id="panel-body"></div></div>`;
+  panel.innerHTML=`<div class="panel"><div class="panel-head"><div><div class="panel-title">Rua ${b.rua} — Avenida ${b.avenida}</div><div class="panel-sub">${tot}/${b.capacidade} fardos · ${livre} livres</div></div><button class="btn btn-ghost" id="btn-close-panel" style="padding:6px 12px;font-size:12px;">✕</button></div><div class="prog-wrap"><div class="prog-fill" style="width:${p*100}%;background:${cor}"></div></div><div class="action-tabs"><button class="action-tab${actionTab==='lotes'?' active':''}" data-at="lotes">Lotes</button><button class="action-tab${actionTab==='entrada'?' active':''}" data-at="entrada">Entrada</button><button class="action-tab${actionTab==='saida'?' active':''}" data-at="saida">Saída</button></div><div id="panel-body"></div></div>`;
   document.getElementById('btn-close-panel').onclick=()=>{selectedBloco=null;panel.classList.add('hidden');renderMapa();};
   panel.querySelectorAll('.action-tab').forEach(el=>{el.addEventListener('click',()=>{actionTab=el.dataset.at;selectedLote=null;renderBlocoPanel();});});
   renderPanelBody(b,livre);
@@ -362,6 +378,20 @@ function renderPanelBody(b,livre){
   if(actionTab==='saida'){if(!ls.length){body.innerHTML=`<div class="empty-msg">Nenhum lote para remover.</div>`;return;}const selObj=selectedLote?ls.find(l=>l.id===selectedLote):null;body.innerHTML=ls.map(l=>{const st=ps(l.produto);return `<div class="lote-row${selectedLote===l.id?' sel':''}" data-lid="${l.id}" style="border-left:4px solid ${st.dot}"><div><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div></div><div class="lote-qty">${l.fardos}</div></div>`;}).join('')+(selObj?`<div class="ff" style="margin-top:10px"><label>Quantidade a retirar (máx. ${selObj.fardos})</label><input id="f-sqtd" type="number" min="1" max="${selObj.fardos}" placeholder="${selObj.fardos}"></div><div class="ff"><label>Número NF (opcional)</label><input id="f-snf" placeholder="NF de saída"></div><div class="ff"><label>Observação (opcional)</label><textarea id="f-sobs" placeholder="Ex: Enviado para processamento, NF 12345…"></textarea></div><button class="btn btn-red btn-full" id="btn-saida">📤 Registrar Saída</button>`:'');body.querySelectorAll('[data-lid]').forEach(el=>{el.addEventListener('click',()=>{selectedLote=el.dataset.lid;renderBlocoPanel();});});if(selObj){document.getElementById('btn-saida').onclick=async()=>{const n=parseInt(document.getElementById('f-sqtd').value);const nf=document.getElementById('f-snf').value.trim()||null;const obs=document.getElementById('f-sobs').value.trim()||null;if(!n||n<=0)return toast('Quantidade inválida.','err');if(n>selObj.fardos)return toast(`Máximo: ${selObj.fardos}.`,'err');document.getElementById('btn-saida').disabled=true;try{if(n===selObj.fardos){await sb.from('lotes').delete().eq('id',selObj.id);}else{await sb.from('lotes').update({fardos:selObj.fardos-n}).eq('id',selObj.id);}const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});if(e1)throw e1;const {error:e2}=await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});if(e2)throw e2;await loadBlocos();await loadHistorico();toast(`✅ Saída de ${n} fardos registrada!`);selectedLote=null;actionTab='lotes';renderMapa();renderBlocoPanel();}catch{toast('Erro ao salvar.','err');}finally{const btn=document.getElementById('btn-saida');if(btn)btn.disabled=false;}};}}
 }
 
+function renderEstoque(){
+  const el=document.getElementById('estoque-list');
+  const totals={};
+  PRODS.forEach(p=>totals[p]={fardos:0,lotes:0,blocos:new Set()});
+  lotes.forEach(l=>{if(!totals[l.produto])totals[l.produto]={fardos:0,lotes:0,blocos:new Set()};totals[l.produto].fardos+=l.fardos;totals[l.produto].lotes+=1;totals[l.produto].blocos.add(l.bloco_id);});
+  const totalGeral=lotes.reduce((s,l)=>s+l.fardos,0);
+  let h=`<div class="estoque-total"><div class="et-num">${totalGeral}</div><div class="et-lbl">Total de fardos em estoque</div></div>`;
+  h+=`<div class="sec-title">Saldo por produto</div>`;
+  h+=Object.keys(totals).map(p=>{const t=totals[p];const st=ps(p);const zerado=t.fardos===0;return `<div class="prod-card${zerado?' zerado':''}" style="border-left-color:${st.dot}"><div class="prod-head"><div><div class="prod-name" style="color:${st.dot}">${p}</div><div class="prod-meta">${t.lotes} lote(s) · ${t.blocos.size} bloco(s)</div>${zerado?`<div class="zerado-alert">⚠ Estoque zerado</div>`:''}</div><div class="prod-qty" style="color:${zerado?'var(--red2)':st.text}">${t.fardos}</div></div></div>`;}).join('');
+  h+=`<div class="divider"></div><div class="sec-title">Lotes em estoque (saldo atual)</div>`;
+  if(!lotes.length){h+=`<div class="empty-msg">Nenhum lote em estoque.</div>`;}
+  else{const ord=[...lotes].sort((a,b)=>a.produto.localeCompare(b.produto)||a.lote.localeCompare(b.lote));h+=ord.map(l=>{const b=blocos.find(x=>x.id===l.bloco_id);const st=ps(l.produto);return `<div class="lote-row" style="border-left:4px solid ${st.dot}"><div><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">📍 Rua ${b?b.rua:'—'} · Av ${b?b.avenida:'—'}</div></div><div class="lote-qty">${l.fardos}</div></div>`;}).join('');}
+  el.innerHTML=h;
+}
 function renderHistorico(){
   const inp=document.getElementById('hist-search');
   const sel=document.getElementById('hist-filter');
@@ -415,7 +445,6 @@ function openEditModal(id){
   if(!h)return;
   document.getElementById('edit-obs').value=h.observacao||'';
   document.getElementById('edit-nf').value=h.numero_nf||'';
-  document.getElementById('edit-qtd').value='';
   document.getElementById('modal-edit').classList.add('show');
 }
 const btnSaveEdit=document.getElementById('btn-save-edit');
@@ -425,20 +454,26 @@ if(btnSaveEdit){
 }
 
 async function saveEditHandler(){
-  console.log('Clicou em salvar');
   const obs=document.getElementById('edit-obs').value.trim()||null;
   const nf=document.getElementById('edit-nf').value.trim()||null;
-  console.log('Valores:',obs,nf);
-  if(!editingId){console.log('Sem editingId');return;}
+  if(!editingId)return;
+  if(!isAdmin())return toast('Apenas administradores podem editar.','err');
+  const antigo=historico.find(x=>x.id===editingId);
+  const btn=document.getElementById('btn-save-edit');
+  if(btn)btn.disabled=true;
   try{
-    const {error}=await sb.from('historico').update({observacao:obs,numero_nf:nf}).eq('id',editingId);
-    if(error){console.error('Erro Supabase:',error);toast('Erro: '+error.message,'err');return;}
-    await loadHistorico();
-    toast('✅ Editado!');
+    const {error}=await sb.from('historico').update({observacao:obs,numero_nf:nf,editado_em:new Date().toISOString()}).eq('id',editingId);
+    if(error){toast('Erro: '+error.message,'err');return;}
+    if(antigo){
+      await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'historico',registro_id:editingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{observacao:antigo.observacao,numero_nf:antigo.numero_nf},dados_novos:{observacao:obs,numero_nf:nf},motivo:null});
+    }
+    await loadHistorico();await loadAuditoria();
+    toast('✅ Movimentação editada e registrada na auditoria!');
     document.getElementById('modal-edit').classList.remove('show');
     editingId=null;
     renderHistList();
-  }catch(e){console.error('Erro geral:',e);toast('Erro: '+e.message,'err');}
+  }catch(e){toast('Erro ao editar: '+e.message,'err');}
+  finally{const b=document.getElementById('btn-save-edit');if(b)b.disabled=false;}
 }
 document.getElementById('btn-cancel-edit').onclick=()=>{document.getElementById('modal-edit').classList.remove('show');editingId=null;};
 
@@ -449,6 +484,7 @@ function openDeleteModal(id,lote,qtd){
   document.getElementById('modal-delete').classList.add('show');
 }
 document.getElementById('btn-confirm-delete').onclick=async()=>{
+  if(!isAdmin())return toast('Apenas administradores podem excluir.','err');
   const motivo=document.getElementById('delete-motivo').value.trim()||'Sem motivo informado';
   document.getElementById('btn-confirm-delete').disabled=true;
   try{
@@ -456,14 +492,20 @@ document.getElementById('btn-confirm-delete').onclick=async()=>{
     if(!h)throw new Error('Registro não encontrado');
     const dados={...h};
     await sb.from('historico').delete().eq('id',deletingId);
-    if(h.acao==='SAIDA'){const l=lotes.find(x=>x.lote===h.lote);if(l){await sb.from('lotes').update({fardos:l.fardos+h.fardos}).eq('id',l.id);}}
+    const lote=lotes.find(x=>x.lote===h.lote&&x.bloco_id===h.bloco_id);
+    if(h.acao==='SAIDA'){
+      if(lote){await sb.from('lotes').update({fardos:lote.fardos+h.fardos}).eq('id',lote.id);}
+      else{await sb.from('lotes').insert({bloco_id:h.bloco_id,lote:h.lote,produto:h.produto,fardos:h.fardos});}
+    }else if(h.acao==='ENTRADA'){
+      if(lote){const novo=lote.fardos-h.fardos;if(novo>0){await sb.from('lotes').update({fardos:novo}).eq('id',lote.id);}else{await sb.from('lotes').delete().eq('id',lote.id);}}
+    }
     await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'historico',registro_id:deletingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:dados,dados_novos:null,motivo});
-    await loadHistorico();await loadAuditoria();
-    toast('✅ Movimentação excluída e registrada na auditoria!');
+    await loadBlocos();await loadHistorico();await loadAuditoria();
+    toast('✅ Movimentação excluída e estoque ajustado!');
     document.getElementById('modal-delete').classList.remove('show');
     deletingId=null;
-    if(histSearch||histFilter)renderHistList();
-  }catch(e){toast('Erro ao excluir.','err');}
+    renderHistList();
+  }catch(e){toast('Erro ao excluir: '+e.message,'err');}
   finally{document.getElementById('btn-confirm-delete').disabled=false;}
 };
 document.getElementById('btn-cancel-delete').onclick=()=>{document.getElementById('modal-delete').classList.remove('show');deletingId=null;};
