@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    :root{--bg:#0c0e14;--surface:#161921;--card:#1e2235;--border:#2a2f4a;--accent:#D4950A;--accent2:#FFBE2E;--green:#2C6012;--green2:#52B040;--red:#A32D2D;--red2:#F09595;--blue2:#85B7EB;--text:#eef0f7;--muted:#7a7f9a;--dual-amber:#D4950A;--dual-green:#3A8A22;--font:'Segoe UI',system-ui,sans-serif;}
+    :root{--bg:#0B1220;--surface:#111827;--card:#1F2937;--border:#374151;--accent:#D4950A;--accent2:#FFBE2E;--green:#14532d;--green2:#4ADE80;--red:#7F1D1D;--red2:#FCA5A5;--blue2:#60A5FA;--text:#F9FAFB;--muted:#9CA3AF;--dual-amber:#D4950A;--dual-green:#14532d;--font:'Inter','Segoe UI',system-ui,sans-serif;--sidebar-w:232px;--topbar-h:58px;}
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overscroll-behavior:none;}
     input,select,button,textarea{font-family:var(--font);}
@@ -183,6 +183,253 @@
     .badge-comp{background:#D4950A33;color:var(--accent2);border:1px solid #D4950A66;}
     .btn-restore{background:var(--blue2);color:#0f1117;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;}
 
+  
+    /* ════════════════════════════════════════════════════════════
+       MODERNIZAÇÃO VISUAL — shell com barra lateral + dashboard
+       ════════════════════════════════════════════════════════════ */
+    .app-shell{display:flex;min-height:100vh;}
+    .sidebar{width:226px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;transition:width .2s ease,transform .2s ease;z-index:200;}
+    .sidebar.collapsed{width:68px;}
+    .sidebar-head{display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:1px solid var(--border);}
+    .sidebar-logo{height:30px;width:auto;max-width:120px;object-fit:contain;flex-shrink:0;}
+    .sidebar-brand{font-size:13px;font-weight:800;color:var(--accent2);letter-spacing:.5px;white-space:nowrap;overflow:hidden;}
+    .sidebar.collapsed .sidebar-brand,.sidebar.collapsed .nav-label{display:none;}
+    .sidebar-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;}
+    .sidebar .nav-item{flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;padding:11px 12px;border-radius:10px;font-size:13px;font-weight:600;width:100%;text-align:left;}
+    .sidebar .nav-item .ni{font-size:18px;margin-bottom:0;width:22px;text-align:center;flex-shrink:0;}
+    .sidebar .nav-item:hover{background:var(--card);color:var(--text);}
+    .sidebar .nav-item.active{background:linear-gradient(135deg,#D4950A22,#D4950A0c);color:var(--accent2);border-left:3px solid var(--accent);padding-left:9px;}
+    .sidebar-foot{padding:10px;border-top:1px solid var(--border);}
+    .btn-collapse{width:100%;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .btn-collapse:hover{color:var(--accent2);border-color:var(--accent);}
+    .main-area{flex:1;min-width:0;display:flex;flex-direction:column;min-height:100vh;}
+    .btn-hamburger{display:none;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;width:36px;height:36px;align-items:center;justify-content:center;font-size:18px;cursor:pointer;margin-right:10px;}
+    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:190;}
+    .sidebar-overlay.show{display:block;}
+
+    @media(max-width:900px){
+      .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);box-shadow:4px 0 24px rgba(0,0,0,.4);}
+      .sidebar.mobile-open{transform:translateX(0);}
+      .sidebar.collapsed{width:226px;} /* no mobile, collapse não se aplica — sempre largura cheia quando aberta */
+      .btn-hamburger{display:flex;}
+    }
+
+    /* Larguras de conteúdo: mapa/dashboard usam mais espaço; telas de formulário/lista ficam confortáveis */
+    .content-wide{max-width:1500px;margin:0 auto;width:100%;}
+    .content-narrow{max-width:760px;margin:0 auto;width:100%;}
+
+    /* ── Cards do Dashboard inicial ── */
+    .kpi-dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+    @media(max-width:1100px){.kpi-dash-grid{grid-template-columns:repeat(2,1fr);}}
+    @media(max-width:560px){.kpi-dash-grid{grid-template-columns:1fr;}}
+    .kpi-dash-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.18);position:relative;overflow:hidden;}
+    .kpi-dash-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--accent);}
+    .kpi-dash-card.c-green::before{background:var(--green2);}
+    .kpi-dash-card.c-blue::before{background:var(--blue2);}
+    .kpi-dash-card.c-amber::before{background:var(--accent2);}
+    .kpi-dash-card.c-purple::before{background:#AFA9EC;}
+    .kpi-dash-icon{font-size:22px;margin-bottom:8px;opacity:.85;}
+    .kpi-dash-val{font-size:26px;font-weight:800;line-height:1.15;color:var(--text);}
+    .kpi-dash-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:4px;}
+    .kpi-dash-sub{font-size:11px;color:var(--muted);margin-top:6px;}
+    .dash-section-title{font-size:14px;font-weight:800;color:var(--accent2);margin:6px 0 12px;letter-spacing:.3px;}
+
+    /* ── Painel lateral (drawer) do bloco — substitui o painel fixo abaixo do mapa ── */
+    .bloco-drawer{position:fixed;top:0;right:0;height:100vh;width:420px;max-width:92vw;background:var(--surface);border-left:1px solid var(--border);box-shadow:-8px 0 32px rgba(0,0,0,.45);z-index:300;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;padding:18px;}
+    .bloco-drawer.open{transform:translateX(0);}
+    .drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:295;}
+    .drawer-backdrop.show{display:block;}
+
+    /* ── Células do mapa — versão "profissional", maiores, cor por ocupação ── */
+    .cell{width:58px;height:64px;}
+    .cell-lote{font-size:9px;font-weight:800;max-width:54px;}
+    .cell-prod-dot{position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;}
+    .cell-qty{font-size:10px;}
+    .cell-pct{font-size:9px;font-weight:800;margin-top:1px;letter-spacing:.3px;}
+    .map-wrap{padding:18px;}
+    .map-inner{min-width:680px;}
+
+    /* ── Topbar levemente refinada ── */
+    .topbar{box-shadow:0 1px 6px rgba(0,0,0,.2);}
+
+  
+    /* ═══════════════════════════════════════════════════════════
+       WMS MODERNIZATION — COMPLETE VISUAL SYSTEM
+       ═══════════════════════════════════════════════════════════ */
+
+    /* Layout root */
+    html,body{height:100%;overflow:hidden;}
+    body{font-family:var(--font);background:var(--bg);}
+
+    /* App shell: sidebar + main */
+    #app-screen{display:flex;flex-direction:row;height:100vh;overflow:hidden;position:relative;}
+
+    /* ── SIDEBAR ── */
+    #app-sidebar{
+      width:var(--sidebar-w);flex-shrink:0;
+      background:var(--surface);border-right:1px solid var(--border);
+      display:flex;flex-direction:column;height:100vh;overflow-y:auto;overflow-x:hidden;
+      transition:width .22s ease;z-index:200;
+    }
+    #app-sidebar.collapsed{width:68px;}
+    .sidebar-head{
+      display:flex;align-items:center;gap:10px;padding:14px 12px;
+      border-bottom:1px solid var(--border);min-height:var(--topbar-h);flex-shrink:0;
+    }
+    .sidebar-logo{height:30px;width:auto;max-width:110px;object-fit:contain;flex-shrink:0;}
+    .sidebar-brand{overflow:hidden;}
+    .sidebar-brand-name{font-size:13px;font-weight:800;color:var(--accent2);letter-spacing:.5px;white-space:nowrap;}
+    .sidebar-brand-sub{font-size:9px;color:var(--muted);margin-top:2px;white-space:nowrap;}
+    #app-sidebar.collapsed .sidebar-brand,
+    #app-sidebar.collapsed .nav-label{display:none;}
+    .sidebar-nav-inner{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;}
+    .sidebar-nav-inner .nav-item{
+      flex-direction:row !important;align-items:center;justify-content:flex-start !important;
+      gap:12px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;
+      width:100%;text-align:left;color:var(--muted);background:none;border:none;cursor:pointer;
+      white-space:nowrap;transition:background .15s,color .15s;min-height:40px;
+    }
+    .sidebar-nav-inner .nav-item:hover{background:var(--card);color:var(--text);}
+    .sidebar-nav-inner .nav-item.active{
+      background:linear-gradient(135deg,rgba(212,149,10,.20),rgba(212,149,10,.06));
+      color:var(--accent2);border-left:3px solid var(--accent);padding-left:9px;
+    }
+    .sidebar-nav-inner .nav-item .ni{font-size:18px;margin-bottom:0 !important;width:22px;text-align:center;flex-shrink:0;}
+    .sidebar-nav-inner .nav-item.hidden-nav{display:none !important;}
+    #app-sidebar.collapsed .sidebar-nav-inner .nav-item{
+      justify-content:center !important;padding:10px;border-left:none !important;
+    }
+    #app-sidebar.collapsed .sidebar-nav-inner .nav-item.active{border-left:3px solid var(--accent) !important;padding-left:7px !important;}
+    .sidebar-foot{padding:10px 8px;border-top:1px solid var(--border);flex-shrink:0;}
+    #btn-sidebar-collapse{
+      width:100%;background:var(--card);border:1px solid var(--border);
+      color:var(--muted);border-radius:8px;padding:9px 12px;cursor:pointer;
+      font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;
+      transition:color .15s,border-color .15s;white-space:nowrap;overflow:hidden;
+    }
+    #btn-sidebar-collapse:hover{color:var(--accent2);border-color:var(--accent);}
+    #app-sidebar.collapsed #btn-sidebar-collapse{justify-content:center;padding:9px;}
+
+    /* ── MAIN AREA ── */
+    .main-area{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+    /* ── TOPBAR ── */
+    .topbar{
+      height:var(--topbar-h);flex-shrink:0;
+      background:var(--surface);border-bottom:1px solid var(--border);
+      padding:0 20px;display:flex;align-items:center;justify-content:space-between;
+      box-shadow:0 1px 10px rgba(0,0,0,.3);position:sticky;top:0;z-index:100;
+    }
+    .topbar-left{display:flex;align-items:center;gap:12px;}
+    .topbar-right{display:flex;align-items:center;gap:18px;}
+    #btn-hamburger{
+      background:var(--card);border:1px solid var(--border);color:var(--text);
+      border-radius:8px;width:36px;height:36px;align-items:center;justify-content:center;
+      font-size:18px;cursor:pointer;display:none;flex-shrink:0;
+    }
+    .topbar-page-title{font-size:16px;font-weight:700;color:var(--text);}
+    .topbar-title{display:none;}
+    .topbar-datetime{text-align:right;}
+    #topbar-date{display:block;font-size:11px;color:var(--muted);}
+    #topbar-time{display:block;font-size:15px;font-weight:800;color:var(--text);letter-spacing:.5px;}
+    .topbar-user-block{display:flex;align-items:center;gap:10px;}
+    .topbar-avatar{
+      width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#e8a51a);
+      color:#0B1220;font-weight:800;font-size:14px;display:flex;align-items:center;
+      justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(212,149,10,.35);
+    }
+    #topbar-user{font-size:13px;font-weight:700;color:var(--text);}
+    .topbar-role{font-size:10px;color:var(--accent2);font-weight:700;}
+
+    /* ── CONTENT (scrollable area) ── */
+    .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px 24px;max-width:none;}
+
+    /* ── KPI DASHBOARD ROW ── */
+    #dash-kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px;}
+    @media(max-width:1200px){#dash-kpi-row{grid-template-columns:repeat(3,1fr);}}
+    @media(max-width:700px){#dash-kpi-row{grid-template-columns:1fr 1fr;}}
+    .kpi-wms-card{
+      background:var(--card);border:1px solid var(--border);border-radius:12px;
+      padding:14px 16px;display:flex;align-items:center;gap:14px;
+      box-shadow:0 2px 8px rgba(0,0,0,.25);transition:border-color .2s,transform .15s;
+    }
+    .kpi-wms-card:hover{border-color:var(--accent);transform:translateY(-1px);}
+    .kpi-wms-icon{
+      width:44px;height:44px;border-radius:10px;display:flex;align-items:center;
+      justify-content:center;font-size:20px;flex-shrink:0;
+    }
+    .c-amber{background:rgba(212,149,10,.18);}
+    .c-green{background:rgba(74,222,128,.13);}
+    .c-blue{background:rgba(96,165,250,.15);}
+    .c-purple{background:rgba(168,85,247,.15);}
+    .c-orange{background:rgba(249,115,22,.15);}
+    .kpi-wms-val{font-size:22px;font-weight:800;color:var(--text);line-height:1.15;}
+    .kpi-wms-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:3px;}
+
+    /* ── MAP IMPROVEMENTS ── */
+    .sec-header h2{font-size:15px;letter-spacing:.2px;}
+    .sec-header p{font-size:12px;}
+    .map-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;overflow:auto;box-shadow:0 2px 10px rgba(0,0,0,.2);}
+    .cell{width:62px;height:68px;border-radius:7px;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:transform .12s,box-shadow .12s;}
+    .cell:hover{transform:scale(1.10);box-shadow:0 6px 16px rgba(0,0,0,.5);z-index:10;}
+    .cell.selected{box-shadow:0 0 0 3px var(--accent2),0 4px 14px rgba(212,149,10,.35) !important;}
+    .cell-lote{font-size:9px;font-weight:800;letter-spacing:.2px;}
+    .cell-prod{height:0;overflow:hidden;font-size:0;opacity:0;} /* product shown by color */
+    .cell-qty{font-size:10px;font-weight:800;}
+    .occ-bar{left:4px;right:4px;bottom:4px;height:5px;border-radius:3px;}
+    .av-num{width:62px;}
+    .inicio-bar{font-size:10px;letter-spacing:4px;color:var(--muted);}
+
+    /* ── BLOCO PANEL as side drawer ── */
+    #bloco-panel:not(.hidden){
+      position:fixed !important;right:0 !important;top:0 !important;
+      height:100vh !important;width:390px !important;max-width:90vw !important;
+      background:var(--surface) !important;border-left:1px solid var(--border) !important;
+      z-index:280 !important;overflow-y:auto !important;display:block !important;
+      box-shadow:-8px 0 30px rgba(0,0,0,.5) !important;padding:0 !important;
+    }
+    #bloco-panel .panel{border-radius:0;border:none;min-height:100vh;}
+
+    /* ── BACKDROP ── */
+    #drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:270;}
+    #drawer-backdrop.show{display:block;}
+    #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:190;}
+    #sidebar-overlay.show{display:block;}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:900px){
+      #app-sidebar{position:fixed;left:0;top:0;height:100vh;transform:translateX(-100%);
+        transition:transform .22s ease,width .22s ease;box-shadow:4px 0 20px rgba(0,0,0,.5);}
+      #app-sidebar.mobile-open{transform:translateX(0);}
+      #btn-hamburger{display:flex !important;}
+      #dash-kpi-row{grid-template-columns:1fr 1fr;}
+    }
+
+    /* ── SCROLLBAR SLIM ── */
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+    /* ── CARD REFINEMENTS ── */
+    .panel{background:var(--card);border-color:var(--border);border-radius:12px;}
+    .hist-row,.lote-row,.qual-row{background:var(--card);border-color:var(--border);}
+    .lote-row{border-radius:10px;}
+    .btn-accent{background:var(--accent);color:#0B1220;font-weight:700;}
+    .btn-green{background:#166534;color:#F0FDF4;}
+    .btn-red{background:#7F1D1D;color:#FEE2E2;}
+    .prog-wrap{background:var(--border);}
+
+    /* ── HISTORY CARD borders by type ── */
+    .hist-row .badge-in{border-left:3px solid var(--green2);}
+    .hist-row .badge-out{border-left:3px solid var(--red2);}
+
+    /* ── LOGIN SCREEN ── */
+    #login-screen{background:radial-gradient(ellipse at 65% 40%,#1a2a4a 0%,#0B1220 70%);}
+    .login-box{background:var(--surface);border-color:var(--border);box-shadow:0 10px 40px rgba(0,0,0,.55);}
+
+    /* ── OLD NAV-BAR: hide completely (replaced by sidebar) ── */
+    .nav-bar{display:none !important;}
+
   </style>
 </head>
 <body>
@@ -202,20 +449,52 @@
 </div>
 
 <div id="app-screen" class="hidden">
-  <div class="topbar">
-    <div class="topbar-left">
-      <img id="logo-topbar" class="topbar-logo" src="" alt="DUAL"/>
-      <div style="margin-left:10px;">
-        <div class="topbar-title">Linter Control</div>
-        <div class="topbar-user" id="topbar-user">—</div>
-        <div class="topbar-role" id="topbar-role">—</div>
+  <div id="sidebar-overlay"></div>
+  <div id="drawer-backdrop"></div>
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside id="app-sidebar">
+    <div class="sidebar-head">
+      <img id="logo-topbar" class="sidebar-logo" src="" alt="DUAL"/>
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-name">LINTER CONTROL</div>
+        <div class="sidebar-brand-sub">Sistema WMS de Fardos</div>
       </div>
     </div>
-    <button class="btn btn-ghost" id="btn-logout" style="padding:7px 14px;font-size:13px;">Sair</button>
-  </div>
+    <nav class="sidebar-nav-inner">
+      <button class="nav-item active" data-tab="mapa"><span class="ni">🗺️</span><span class="nav-label">Mapa</span></button>
+      <button class="nav-item" data-tab="estoque"><span class="ni">📦</span><span class="nav-label">Estoque</span></button>
+      <button class="nav-item" data-tab="historico"><span class="ni">📋</span><span class="nav-label">Histórico</span></button>
+      <button class="nav-item" data-tab="local"><span class="ni">📍</span><span class="nav-label">Por Local</span></button>
+      <button class="nav-item" data-tab="qualidade"><span class="ni">🔬</span><span class="nav-label">Qualidade</span></button>
+      <button class="nav-item" id="nav-audit" data-tab="auditoria"><span class="ni">🔍</span><span class="nav-label">Auditoria</span></button>
+      <button class="nav-item" id="nav-admin" data-tab="admin"><span class="ni">⚙️</span><span class="nav-label">Administração</span></button>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="btn-sidebar-collapse">◀ Recolher</button>
+    </div>
+  </aside>
 
-  <div class="content">
-    <div id="tab-mapa">
+  <!-- ═══ MAIN AREA ═══ -->
+  <div class="main-area">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button id="btn-hamburger">☰</button>
+        <span class="topbar-page-title" id="topbar-page-title">Mapa do Armazém</span>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-datetime"><span id="topbar-date"></span><span id="topbar-time"></span></div>
+        <div class="topbar-user-block">
+          <div class="topbar-avatar" id="topbar-avatar">?</div>
+          <div><div id="topbar-user" class="topbar-user">—</div><div id="topbar-role" class="topbar-role">—</div></div>
+        </div>
+        <button class="btn btn-ghost" id="btn-logout" style="padding:7px 14px;font-size:13px;">↪ Sair</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="tab-mapa">
+        <div id="dash-kpi-row"></div>
       <div class="sec-header"><h2>Mapa do armazém</h2><p>Toque num bloco para gerenciar</p></div>
       <div class="legend">
         <div class="leg-item"><div class="leg-dot" style="background:#378ADD"></div>Linter</div>
@@ -225,9 +504,9 @@
         <div class="leg-item"><div class="leg-dot" style="background:#22263a;border:1px solid #2e3250"></div>Vazio</div>
       </div>
       <div class="leg-occ">
-        <div class="leg-item"><div class="leg-dot" style="background:#52B040"></div>Ocupação até 50%</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#FAC775"></div>51% – 80%</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#F09595"></div>Acima de 80%</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#4ADE80"></div>0 – 50%</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#FBBF24"></div>51 – 80%</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#F97316"></div>81 – 99%</div>
         <div class="leg-item"><div class="leg-dot" style="background:#378ADD"></div>100% cheio</div>
       </div>
       <div class="map-wrap"><div class="map-inner" id="warehouse-grid"></div></div>
@@ -375,16 +654,8 @@
 
   </div>
 
-  <nav class="nav-bar">
-    <button class="nav-item active" data-tab="mapa"><span class="ni">🗺️</span>Mapa</button>
-    <button class="nav-item" data-tab="estoque"><span class="ni">📦</span>Estoque</button>
-    <button class="nav-item" data-tab="historico"><span class="ni">📋</span>Histórico</button>
-    <button class="nav-item" data-tab="local"><span class="ni">📍</span>Por Local</button>
-    <button class="nav-item" data-tab="qualidade"><span class="ni">🔬</span>Qualidade</button>
-    <button class="nav-item" id="nav-audit" data-tab="auditoria"><span class="ni">🔍</span>Auditoria</button>
-    <button class="nav-item" id="nav-admin" data-tab="admin"><span class="ni">⚙️</span>Admin</button>
-  </nav>
-</div>
+  </div><!-- /.main-area -->
+</div><!-- /#app-screen -->
 
 <div id="modal-edit" class="modal">
   <div class="modal-box">
@@ -584,11 +855,11 @@ document.querySelectorAll('.nav-item').forEach(el=>el.addEventListener('click',(
 function showTab(tab){selectedBloco=null;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));['mapa','estoque','historico','local','auditoria','admin','qualidade'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));if(tab==='mapa')renderMapa();if(tab==='estoque')renderEstoque();if(tab==='historico')renderHistorico();if(tab==='local')renderLocal();if(tab==='auditoria')renderAuditoria();if(tab==='admin')renderAdmin();if(tab==='qualidade')renderQualidade();}
 
 function occupancyColor(pct){
-  if(pct>=1) return '#378ADD';        // 100% cheio → azul
-  if(pct>0.8) return '#F09595';       // >80% → vermelho
-  if(pct>0.5) return '#FAC775';       // 51-80% → amarelo
-  if(pct>0)   return '#52B040';       // até 50% → verde
-  return null;                        // vazio → sem barra
+  if(pct>=1)  return '#60A5FA';  // 100%     → azul
+  if(pct>0.8) return '#F97316';  // 81-99%   → laranja
+  if(pct>0.5) return '#FBBF24';  // 51-80%   → amarelo
+  if(pct>0)   return '#4ADE80';  // 0-50%    → verde
+  return null;                   // vazio
 }
 function renderMapa(){
   const grid=document.getElementById('warehouse-grid');
@@ -1924,6 +2195,88 @@ async function salvarQualLimites(){
   finally{if(btn)btn.disabled=false;}
 }
 
+
+
+/* ═══════════════════════════════════════════════════════════
+   VISUAL JS — UI enhancements only, zero functional changes
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1. Topbar clock ── */
+(function(){function p(n){return String(n).padStart(2,'0');}function tick(){const n=new Date();const d=document.getElementById('topbar-date');const t=document.getElementById('topbar-time');if(d)d.textContent=n.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});if(t)t.textContent=p(n.getHours())+':'+p(n.getMinutes())+':'+p(n.getSeconds());}tick();setInterval(tick,1000);})();
+
+/* ── 2. Sidebar collapse ── */
+document.getElementById('btn-sidebar-collapse')?.addEventListener('click',function(){
+  const sb=document.getElementById('app-sidebar');if(!sb)return;
+  const c=sb.classList.toggle('collapsed');
+  this.textContent=c?'▶':'◀ Recolher';
+});
+
+/* ── 3. Mobile hamburger ── */
+document.getElementById('btn-hamburger')?.addEventListener('click',function(){
+  document.getElementById('app-sidebar')?.classList.toggle('mobile-open');
+  document.getElementById('sidebar-overlay')?.classList.toggle('show');
+});
+document.getElementById('sidebar-overlay')?.addEventListener('click',function(){
+  document.getElementById('app-sidebar')?.classList.remove('mobile-open');
+  document.getElementById('sidebar-overlay')?.classList.remove('show');
+});
+document.querySelectorAll('.sidebar-nav-inner .nav-item').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.getElementById('app-sidebar')?.classList.remove('mobile-open');
+    document.getElementById('sidebar-overlay')?.classList.remove('show');
+  });
+});
+
+/* ── 4. Drawer backdrop sync ── */
+(function(){
+  const bp=document.getElementById('bloco-panel');
+  const bd=document.getElementById('drawer-backdrop');
+  if(!bp||!bd)return;
+  function sync(){bd.classList.toggle('show',!bp.classList.contains('hidden'));}
+  new MutationObserver(sync).observe(bp,{attributes:true,attributeFilter:['class']});
+  bd.addEventListener('click',function(){
+    const c=document.getElementById('btn-close-panel');
+    if(c)c.click();else{bp.classList.add('hidden');if(typeof renderMapa!=='undefined')renderMapa();}
+  });
+})();
+
+/* ── 5. Page title update ── */
+const _PAGE_TITLES={mapa:'Mapa do Armazém',estoque:'Controle de Estoque',historico:'Histórico de Movimentações',local:'Histórico por Local',qualidade:'Qualidade do Linter',auditoria:'Auditoria do Sistema',admin:'Administração'};
+const _stOrig=showTab;
+showTab=function(tab){
+  _stOrig(tab);
+  const el=document.getElementById('topbar-page-title');
+  if(el)el.textContent=_PAGE_TITLES[tab]||tab;
+};
+
+/* ── 6. KPI Dashboard cards ── */
+function renderKPIDash(){
+  const el=document.getElementById('dash-kpi-row');if(!el)return;
+  const total=lotes.reduce(function(s,l){return s+l.fardos;},0);
+  const ocup=blocos.filter(function(b){return totB(b.id)>0;}).length;
+  const cap=blocos.reduce(function(s,b){return s+b.capacidade;},0);
+  const pct=cap>0?Math.round(total/cap*100):0;
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  const mov=historico.filter(function(h){return h.quando&&new Date(h.quando).toLocaleDateString('pt-BR')===hoje;}).length;
+  const ic=pct>=80?'c-orange':pct>=50?'c-amber':'c-green';
+  el.innerHTML=
+    '<div class="kpi-wms-card"><div class="kpi-wms-icon c-amber">📦</div><div><div class="kpi-wms-val">'+total.toLocaleString('pt-BR')+'</div><div class="kpi-wms-lbl">Estoque Total (fardos)</div></div></div>'+
+    '<div class="kpi-wms-card"><div class="kpi-wms-icon c-blue">🏭</div><div><div class="kpi-wms-val">'+ocup+' / '+blocos.length+'</div><div class="kpi-wms-lbl">Locais Utilizados</div></div></div>'+
+    '<div class="kpi-wms-card"><div class="kpi-wms-icon '+ic+'">📈</div><div><div class="kpi-wms-val">'+pct+'%</div><div class="kpi-wms-lbl">Taxa de Ocupação</div></div></div>'+
+    '<div class="kpi-wms-card"><div class="kpi-wms-icon c-purple">🏷️</div><div><div class="kpi-wms-val">'+lotes.length+'</div><div class="kpi-wms-lbl">Lotes Ativos</div></div></div>'+
+    '<div class="kpi-wms-card"><div class="kpi-wms-icon c-green">🔄</div><div><div class="kpi-wms-val">'+mov+'</div><div class="kpi-wms-lbl">Movimentações Hoje</div></div></div>';
+}
+
+/* ── 7. Avatar + KPI refresh hook ── */
+const _rmOrig=renderMapa;
+renderMapa=function(){
+  _rmOrig();
+  renderKPIDash();
+  if(typeof currentUser!=='undefined'&&currentUser){
+    const av=document.getElementById('topbar-avatar');
+    if(av)av.textContent=(currentUser.nome||'?')[0].toUpperCase();
+  }
+};
 
 </script>
 </body>
