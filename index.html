@@ -1676,16 +1676,27 @@ async function salvarAnalise(){
     const {data:savedArr,error}=await sb.from('qualidade_linter').insert(rec).select();
 
     if(error){
+      // ===== DIAGNÓSTICO TEMPORÁRIO — logs individuais solicitados =====
+      console.log('[QUALIDADE][DEBUG] error completo:',error);
+      console.log('[QUALIDADE][DEBUG] error.message:',error.message);
+      console.log('[QUALIDADE][DEBUG] error.details:',error.details);
+      console.log('[QUALIDADE][DEBUG] error.hint:',error.hint);
+      console.log('[QUALIDADE][DEBUG] error.code:',error.code);
+      console.log('[QUALIDADE][DEBUG] HTTP status (se disponível):',error.status||error.statusCode||'não informado pelo client');
+      console.log('[QUALIDADE][DEBUG] payload enviado no INSERT:',rec);
+      // ===== FIM DO DIAGNÓSTICO TEMPORÁRIO =====
+
       // Loga TODOS os detalhes do erro do Supabase para diagnóstico real
       console.error('[QUALIDADE] Erro Supabase ao inserir:',{
         message:error.message, code:error.code, details:error.details, hint:error.hint
       });
       let msgUsuario=error.message||'Falha desconhecida ao gravar.';
       if(error.code==='42P01')msgUsuario='Tabela "qualidade_linter" não existe no banco. Peça ao administrador para criar a tabela (ver SQL fornecido).';
-      else if(error.code==='42501'||/permission denied|row-level security/i.test(error.message||''))msgUsuario='Permissão negada pelo banco (RLS). Peça ao administrador para desabilitar RLS na tabela qualidade_linter ou criar uma policy de INSERT/SELECT.';
+      else if(error.code==='42501'||/permission denied|row-level security/i.test(error.message||''))msgUsuario='Permissão negada pelo banco (RLS ou GRANT). Peça ao administrador para verificar policies e GRANTs na tabela qualidade_linter para o papel anon.';
       else if(error.code==='22P02'||/invalid input syntax/i.test(error.message||''))msgUsuario=`Tipo de dado inválido para um dos campos (detalhe do banco: ${error.message}).`;
+      else if(!error.code&&/401|unauthorized|JWT|api key/i.test(error.message||''))msgUsuario=`Erro de autorização (401). Detalhe técnico: ${error.message}`;
       // Mostra a mensagem amigável JUNTO com o detalhe técnico real, para diagnóstico imediato
-      toast('❌ Erro ao salvar: '+msgUsuario,'err');
+      toast('❌ Erro ao salvar: '+msgUsuario+' [veja o console para detalhes completos]','err');
       return;
     }
 
