@@ -170,6 +170,19 @@
     .qual-loc-item span:first-child{font-size:9px;color:var(--muted);display:block;text-transform:uppercase;letter-spacing:.5px;}
     .qual-loc-item span:last-child{font-size:13px;font-weight:700;color:var(--accent2);}
 
+  
+    .cell{position:relative;}
+    .occ-bar{position:absolute;left:2px;right:2px;bottom:2px;height:4px;border-radius:2px;background:#2e3250;}
+    .occ-fill{height:100%;border-radius:2px;}
+    .leg-occ{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);}
+    .complement-box{background:#D4950A14;border:1.5px solid var(--accent);border-radius:10px;padding:12px;margin-bottom:12px;}
+    .complement-box .cx-title{font-size:13px;font-weight:800;color:var(--accent2);margin-bottom:6px;}
+    .cx-grid{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;}
+    .cx-grid div span:first-child{font-size:9px;color:var(--muted);display:block;text-transform:uppercase;}
+    .cx-grid div span:last-child{font-size:14px;font-weight:700;}
+    .badge-comp{background:#D4950A33;color:var(--accent2);border:1px solid #D4950A66;}
+    .btn-restore{background:var(--blue2);color:#0f1117;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;}
+
   </style>
 </head>
 <body>
@@ -210,6 +223,12 @@
         <div class="leg-item"><div class="leg-dot" style="background:#BA7517"></div>Algodãozinho</div>
         <div class="leg-item"><div class="leg-dot" style="background:#7F77DD"></div>Fibrilha Torre</div>
         <div class="leg-item"><div class="leg-dot" style="background:#22263a;border:1px solid #2e3250"></div>Vazio</div>
+      </div>
+      <div class="leg-occ">
+        <div class="leg-item"><div class="leg-dot" style="background:#52B040"></div>Ocupação até 50%</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#FAC775"></div>51% – 80%</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#F09595"></div>Acima de 80%</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#378ADD"></div>100% cheio</div>
       </div>
       <div class="map-wrap"><div class="map-inner" id="warehouse-grid"></div></div>
       <div id="bloco-panel" class="hidden"></div>
@@ -291,6 +310,7 @@
         <input class="hist-input" id="audit-search" placeholder="Buscar usuário, lote…"/>
         <select class="hist-input" id="audit-filter" style="flex:0;min-width:110px;">
           <option value="">Todas</option>
+          <option value="INCLUSÃO">Inclusões</option>
           <option value="EDIÇÃO">Edições</option>
           <option value="EXCLUSÃO">Exclusões</option>
         </select>
@@ -536,10 +556,17 @@ function doLogout(){currentUser=null;blocos=[];lotes=[];historico=[];document.ge
 document.querySelectorAll('.nav-item').forEach(el=>el.addEventListener('click',()=>showTab(el.dataset.tab)));
 function showTab(tab){selectedBloco=null;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));['mapa','estoque','historico','local','auditoria','admin','qualidade'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));if(tab==='mapa')renderMapa();if(tab==='estoque')renderEstoque();if(tab==='historico')renderHistorico();if(tab==='local')renderLocal();if(tab==='auditoria')renderAuditoria();if(tab==='admin')renderAdmin();if(tab==='qualidade')renderQualidade();}
 
+function occupancyColor(pct){
+  if(pct>=1) return '#378ADD';        // 100% cheio → azul
+  if(pct>0.8) return '#F09595';       // >80% → vermelho
+  if(pct>0.5) return '#FAC775';       // 51-80% → amarelo
+  if(pct>0)   return '#52B040';       // até 50% → verde
+  return null;                        // vazio → sem barra
+}
 function renderMapa(){
   const grid=document.getElementById('warehouse-grid');
   let h=`<div class="av-row">`;AVS_E.forEach(a=>h+=`<div class="av-num">${a}</div>`);h+=`<div class="sep-cell"></div>`;AVS_D.forEach(a=>h+=`<div class="av-num">${a}</div>`);h+=`</div>`;
-  RUAS.forEach(rua=>{h+=`<div class="rua-row"><div class="rua-lbl">${rua}</div>`;[...AVS_E,null,...AVS_D].forEach(av=>{if(av===null){h+=`<div class="sep-cell"></div>`;return;}const b=findB(rua,av);const bid=b?b.id:null;const tot=bid?totB(bid):0;const prod=bid?mainP(bid):null;const st=prod?ps(prod):{bg:'#22263a',border:'#2e3250',text:'#7a7f9a'};const isSel=selectedBloco&&b&&selectedBloco===b.id;const ls=bid?getBL(bid):[];h+=`<div class="cell${isSel?' selected':''}" data-rua="${rua}" data-av="${av}" style="background:${st.bg};border-color:${st.border}">`;if(tot>0&&ls.length){h+=`<div class="cell-lote" style="color:${st.text}">${ls[0].lote}</div>`;h+=`<div class="cell-prod" style="color:${st.text}">${prod}</div>`;h+=`<div class="cell-qty" style="color:${st.text}">${tot}</div>`;}h+=`</div>`;});h+=`</div>`;});h+=`<div class="inicio-bar">▲  INÍCIO / ENTRADA  ▲</div>`;grid.innerHTML=h;grid.querySelectorAll('.cell').forEach(el=>{el.addEventListener('click',()=>{const b=findB(el.dataset.rua,parseInt(el.dataset.av));if(!b){toast('Bloco não cadastrado.','err');return;}selectedBloco=b.id;actionTab='lotes';selectedLote=null;renderMapa();renderBlocoPanel();});});const panel=document.getElementById('bloco-panel');if(!selectedBloco){panel.classList.add('hidden');return;}renderBlocoPanel();
+  RUAS.forEach(rua=>{h+=`<div class="rua-row"><div class="rua-lbl">${rua}</div>`;[...AVS_E,null,...AVS_D].forEach(av=>{if(av===null){h+=`<div class="sep-cell"></div>`;return;}const b=findB(rua,av);const bid=b?b.id:null;const tot=bid?totB(bid):0;const cap=b?b.capacidade:140;const pct=bid?tot/cap:0;const prod=bid?mainP(bid):null;const st=prod?ps(prod):{bg:'#22263a',border:'#2e3250',text:'#7a7f9a'};const isSel=selectedBloco&&b&&selectedBloco===b.id;const ls=bid?getBL(bid):[];const occCol=occupancyColor(pct);h+=`<div class="cell${isSel?' selected':''}" data-rua="${rua}" data-av="${av}" style="background:${st.bg};border-color:${st.border}">`;if(tot>0&&ls.length){h+=`<div class="cell-lote" style="color:${st.text}">${ls[0].lote}</div>`;h+=`<div class="cell-prod" style="color:${st.text}">${prod}</div>`;h+=`<div class="cell-qty" style="color:${st.text}">${tot}/${cap}</div>`;}if(occCol)h+=`<div class="occ-bar"><div class="occ-fill" style="width:${Math.min(pct*100,100)}%;background:${occCol}"></div></div>`;h+=`</div>`;});h+=`</div>`;});h+=`<div class="inicio-bar">▲  INÍCIO / ENTRADA  ▲</div>`;grid.innerHTML=h;grid.querySelectorAll('.cell').forEach(el=>{el.addEventListener('click',()=>{const b=findB(el.dataset.rua,parseInt(el.dataset.av));if(!b){toast('Bloco não cadastrado.','err');return;}selectedBloco=b.id;actionTab='lotes';selectedLote=null;renderMapa();renderBlocoPanel();});});const panel=document.getElementById('bloco-panel');if(!selectedBloco){panel.classList.add('hidden');return;}renderBlocoPanel();
 }
 
 function renderBlocoPanel(){
@@ -547,11 +574,11 @@ function renderBlocoPanel(){
   const b=blocos.find(x=>x.id===selectedBloco);
   if(!b){panel.classList.add('hidden');return;}
   const tot=totB(b.id),livre=livB(b.id);
-  const p=Math.min(tot/b.capacidade,1);
-  const prod=mainP(b.id);
-  const cor=prod?ps(prod).dot:'#7a7f9a';
+  const pct=tot/b.capacidade;
+  const p=Math.min(pct,1);
+  const cor=occupancyColor(pct)||'#7a7f9a';
   panel.classList.remove('hidden');
-  panel.innerHTML=`<div class="panel"><div class="panel-head"><div><div class="panel-title">Rua ${b.rua} — Avenida ${b.avenida}</div><div class="panel-sub">${tot}/${b.capacidade} fardos · ${livre} livres</div></div><button class="btn btn-ghost" id="btn-close-panel" style="padding:6px 12px;font-size:12px;">✕</button></div><div class="prog-wrap"><div class="prog-fill" style="width:${p*100}%;background:${cor}"></div></div><div class="action-tabs"><button class="action-tab${actionTab==='lotes'?' active':''}" data-at="lotes">Lotes</button><button class="action-tab${actionTab==='entrada'?' active':''}" data-at="entrada">Entrada</button><button class="action-tab${actionTab==='saida'?' active':''}" data-at="saida">Saída</button></div><div id="panel-body"></div></div>`;
+  panel.innerHTML=`<div class="panel"><div class="panel-head"><div><div class="panel-title">Rua ${b.rua} — Avenida ${b.avenida}</div><div class="panel-sub">${tot}/${b.capacidade} fardos · ${livre} livres · ${(pct*100).toFixed(0)}% ocupado</div></div><button class="btn btn-ghost" id="btn-close-panel" style="padding:6px 12px;font-size:12px;">✕</button></div><div class="prog-wrap"><div class="prog-fill" style="width:${p*100}%;background:${cor}"></div></div><div class="action-tabs"><button class="action-tab${actionTab==='lotes'?' active':''}" data-at="lotes">Lotes</button><button class="action-tab${actionTab==='entrada'?' active':''}" data-at="entrada">Entrada</button><button class="action-tab${actionTab==='saida'?' active':''}" data-at="saida">Saída</button><button class="action-tab${actionTab==='hist-local'?' active':''}" data-at="hist-local">Histórico</button></div><div id="panel-body"></div></div>`;
   document.getElementById('btn-close-panel').onclick=()=>{selectedBloco=null;panel.classList.add('hidden');renderMapa();};
   panel.querySelectorAll('.action-tab').forEach(el=>{el.addEventListener('click',()=>{actionTab=el.dataset.at;selectedLote=null;renderBlocoPanel();});});
   renderPanelBody(b,livre);
@@ -560,9 +587,180 @@ function renderBlocoPanel(){
 function renderPanelBody(b,livre){
   const body=document.getElementById('panel-body');
   const ls=getBL(b.id);
-  if(actionTab==='lotes'){if(!ls.length){body.innerHTML=`<div class="empty-msg">Bloco vazio.</div>`;return;}body.innerHTML=ls.map(l=>{const st=ps(l.produto);const lastQ=qualidade.find(q=>q.lote===l.lote);const qChips=lastQ?renderQualIndicadores(lastQ):'<span class="ind-chip ind-na">Sem análise</span>';const qDate=lastQ?`<div class="hist-meta" style="margin-top:2px;">🔬 ${new Date(lastQ.criado_em).toLocaleDateString('pt-BR')}</div>`:'';return `<div class="lote-row" style="border-left:4px solid ${st.dot}"><div style="flex:1"><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div><div class="indicator-row">${qChips}</div>${qDate}</div><div class="lote-qty">${l.fardos}</div></div>`}).join('');}
-  if(actionTab==='entrada'){body.innerHTML=`<div class="ff"><label>Número do lote</label><input id="f-lote" placeholder="ex: LINTER2025-L01"></div><div class="ff"><label>Produto</label><select id="f-prod"><option value="">Selecione o produto…</option>${PRODS.map(p=>`<option>${p}</option>`).join('')}</select></div><div class="ff"><label>Quantidade de fardos (máx. ${livre})</label><input id="f-fardos" type="number" min="1" max="${livre}" placeholder="${livre}"></div><div class="ff"><label>Número NF (opcional)</label><input id="f-nf" placeholder="NF de entrada"></div><div class="ff"><label>Observação (opcional)</label><textarea id="f-obs" placeholder="Ex: Carga do caminhão ABC-1234, campo norte…"></textarea></div><button class="btn btn-green btn-full" id="btn-entrada">📥 Registrar Entrada</button>`;document.getElementById('btn-entrada').onclick=async()=>{const lote=document.getElementById('f-lote').value.trim().toUpperCase();const prod=document.getElementById('f-prod').value;const n=parseInt(document.getElementById('f-fardos').value);const nf=document.getElementById('f-nf').value.trim()||null;const obs=document.getElementById('f-obs').value.trim()||null;if(!lote)return toast('Informe o número do lote.','err');if(!prod)return toast('Selecione o produto.','err');if(!n||n<=0)return toast('Quantidade inválida.','err');if(n>livre)return toast(`Espaço insuficiente. Livre: ${livre}.`,'err');if(ls.find(l=>l.lote===lote))return toast('Lote já existe neste bloco.','err');document.getElementById('btn-entrada').disabled=true;try{const {error:e1}=await sb.from('lotes').insert({bloco_id:b.id,lote,produto:prod,fardos:n});if(e1)throw e1;const {error:e2}=await sb.from('historico').insert({acao:'ENTRADA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});if(e2)throw e2;const {error:e3}=await sb.from('logs_operacoes').insert({operacao:'ENTRADA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,status:'SUCESSO'});if(e3)throw e3;await loadBlocos();await loadHistorico();toast(`✅ ${n} fardos de ${lote} registrados!`);actionTab='lotes';renderMapa();renderBlocoPanel();}catch{toast('Erro ao salvar.','err');}finally{const btn=document.getElementById('btn-entrada');if(btn)btn.disabled=false;}};}
-  if(actionTab==='saida'){if(!ls.length){body.innerHTML=`<div class="empty-msg">Nenhum lote para remover.</div>`;return;}const selObj=selectedLote?ls.find(l=>l.id===selectedLote):null;body.innerHTML=ls.map(l=>{const st=ps(l.produto);return `<div class="lote-row${selectedLote===l.id?' sel':''}" data-lid="${l.id}" style="border-left:4px solid ${st.dot}"><div><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div></div><div class="lote-qty">${l.fardos}</div></div>`;}).join('')+(selObj?`<div class="ff" style="margin-top:10px"><label>Quantidade a retirar (máx. ${selObj.fardos})</label><input id="f-sqtd" type="number" min="1" max="${selObj.fardos}" placeholder="${selObj.fardos}"></div><div class="ff"><label>Número NF (opcional)</label><input id="f-snf" placeholder="NF de saída"></div><div class="ff"><label>Observação (opcional)</label><textarea id="f-sobs" placeholder="Ex: Enviado para processamento, NF 12345…"></textarea></div><button class="btn btn-red btn-full" id="btn-saida">📤 Registrar Saída</button>`:'');body.querySelectorAll('[data-lid]').forEach(el=>{el.addEventListener('click',()=>{selectedLote=el.dataset.lid;renderBlocoPanel();});});if(selObj){document.getElementById('btn-saida').onclick=async()=>{const n=parseInt(document.getElementById('f-sqtd').value);const nf=document.getElementById('f-snf').value.trim()||null;const obs=document.getElementById('f-sobs').value.trim()||null;if(!n||n<=0)return toast('Quantidade inválida.','err');if(n>selObj.fardos)return toast(`Máximo: ${selObj.fardos}.`,'err');document.getElementById('btn-saida').disabled=true;try{if(n===selObj.fardos){await sb.from('lotes').delete().eq('id',selObj.id);}else{await sb.from('lotes').update({fardos:selObj.fardos-n}).eq('id',selObj.id);}const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});if(e1)throw e1;const {error:e2}=await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});if(e2)throw e2;await loadBlocos();await loadHistorico();toast(`✅ Saída de ${n} fardos registrada!`);selectedLote=null;actionTab='lotes';renderMapa();renderBlocoPanel();}catch{toast('Erro ao salvar.','err');}finally{const btn=document.getElementById('btn-saida');if(btn)btn.disabled=false;}};}}
+
+  if(actionTab==='lotes'){
+    if(!ls.length){body.innerHTML=`<div class="empty-msg">Bloco vazio.</div>`;return;}
+    body.innerHTML=ls.map(l=>{const st=ps(l.produto);const lastQ=qualidade.find(q=>q.lote===l.lote);const qChips=lastQ?renderQualIndicadores(lastQ):'<span class="ind-chip ind-na">Sem análise</span>';const qDate=lastQ?`<div class="hist-meta" style="margin-top:2px;">🔬 ${new Date(lastQ.criado_em).toLocaleDateString('pt-BR')}</div>`:'';return `<div class="lote-row" style="border-left:4px solid ${st.dot}"><div style="flex:1"><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div><div class="indicator-row">${qChips}</div>${qDate}</div><div class="lote-qty">${l.fardos}</div></div>`}).join('');
+    return;
+  }
+
+  /* ───────── ENTRADA / COMPLEMENTAR LOTE ───────── */
+  if(actionTab==='entrada'){
+    body.innerHTML=`
+      <div class="ff"><label>Número do lote</label><input id="f-lote" list="dl-lotes-bloco" placeholder="ex: LINTER2025-L01" autocomplete="off"></div>
+      <datalist id="dl-lotes-bloco">${ls.map(l=>`<option value="${l.lote}">`).join('')}</datalist>
+      <div id="f-complement-info"></div>
+      <div id="f-form-normal">
+        <div class="ff"><label>Produto</label><select id="f-prod"><option value="">Selecione o produto…</option>${PRODS.map(p=>`<option>${p}</option>`).join('')}</select></div>
+        <div class="ff"><label>Quantidade de fardos (máx. ${livre})</label><input id="f-fardos" type="number" min="1" max="${livre}" placeholder="${livre}"></div>
+      </div>
+      <div class="ff"><label>Número NF (opcional)</label><input id="f-nf" placeholder="NF de entrada"></div>
+      <div class="ff"><label>Observação (opcional)</label><textarea id="f-obs" placeholder="Ex: Carga do caminhão ABC-1234, campo norte…"></textarea></div>
+      <button class="btn btn-green btn-full" id="btn-entrada">📥 Registrar Entrada</button>`;
+
+    const loteInput=document.getElementById('f-lote');
+    const infoBox=document.getElementById('f-complement-info');
+    const formNormal=document.getElementById('f-form-normal');
+    const btnE=document.getElementById('btn-entrada');
+
+    function loteExistente(){
+      const v=loteInput.value.trim().toUpperCase();
+      if(!v)return null;
+      return ls.find(l=>l.lote.toUpperCase()===v)||null;
+    }
+    function atualizarModo(){
+      const existente=loteExistente();
+      if(existente){
+        const espaco=livre; // livre já desconta o total do bloco, incluindo este lote
+        infoBox.innerHTML=`<div class="complement-box"><div class="cx-title">🔄 Lote existente detectado — modo Complementar</div>
+          <div class="cx-grid">
+            <div><span>Produto</span><span>${existente.produto}</span></div>
+            <div><span>Quantidade atual</span><span>${existente.fardos}</span></div>
+            <div><span>Capacidade</span><span>${b.capacidade}</span></div>
+            <div><span>Espaço disponível</span><span>${espaco}</span></div>
+          </div>
+          <div class="ff" style="margin-top:10px;margin-bottom:0;"><label>Quantidade a adicionar (máx. ${espaco})</label><input id="f-comp-qtd" type="number" min="1" max="${espaco}" placeholder="${espaco}"></div>
+        </div>`;
+        formNormal.classList.add('hidden');
+        btnE.textContent='➕ Complementar lote';
+      }else{
+        infoBox.innerHTML='';
+        formNormal.classList.remove('hidden');
+        btnE.textContent='📥 Registrar Entrada';
+      }
+    }
+    loteInput.addEventListener('input',atualizarModo);
+    atualizarModo();
+
+    btnE.onclick=async()=>{
+      const lote=loteInput.value.trim().toUpperCase();
+      const nf=document.getElementById('f-nf').value.trim()||null;
+      const obs=document.getElementById('f-obs').value.trim()||null;
+      if(!lote)return toast('Informe o número do lote.','err');
+      const existente=loteExistente();
+
+      /* ── MODO COMPLEMENTAR ── */
+      if(existente){
+        const n=parseInt(document.getElementById('f-comp-qtd').value);
+        if(!n||n<=0)return toast('Quantidade inválida.','err');
+        if(n>livre)return toast(`Quantidade excede a capacidade disponível. Espaço restante: ${livre}.`,'err');
+        btnE.disabled=true;
+        try{
+          const novoTotal=existente.fardos+n;
+          const {error:e0}=await sb.from('lotes').update({fardos:novoTotal}).eq('id',existente.id);
+          if(e0)throw e0;
+          const {error:e1}=await sb.from('historico').insert({acao:'ENTRADA',subtipo:'COMPLEMENTO',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:existente.lote,produto:existente.produto,fardos:n,saldo_apos:novoTotal,numero_nf:nf,observacao:obs||'Complementação de lote existente',usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
+          if(e1)throw e1;
+          await sb.from('logs_operacoes').insert({operacao:'COMPLEMENTO',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:existente.lote,produto:existente.produto,fardos:n,status:'SUCESSO'});
+          await loadBlocos();await loadHistorico();
+          toast(`✅ Lote ${existente.lote} complementado! Saldo: ${novoTotal}/${b.capacidade}`);
+          actionTab='lotes';renderMapa();renderBlocoPanel();
+        }catch(e){
+          console.error('[COMPLEMENTAR] Erro:',e);
+          toast('Erro ao complementar: '+(e.message||'Falha na gravação.'),'err');
+        }finally{if(btnE)btnE.disabled=false;}
+        return;
+      }
+
+      /* ── MODO ENTRADA NORMAL (lote novo) ── */
+      const prod=document.getElementById('f-prod').value;
+      const n=parseInt(document.getElementById('f-fardos').value);
+      if(!prod)return toast('Selecione o produto.','err');
+      if(!n||n<=0)return toast('Quantidade inválida.','err');
+      if(n>livre)return toast(`Quantidade excede a capacidade disponível. Espaço restante: ${livre}.`,'err');
+      btnE.disabled=true;
+      try{
+        const {error:e1}=await sb.from('lotes').insert({bloco_id:b.id,lote,produto:prod,fardos:n});
+        if(e1)throw e1;
+        const {error:e2}=await sb.from('historico').insert({acao:'ENTRADA',subtipo:'INICIAL',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,saldo_apos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
+        if(e2)throw e2;
+        await sb.from('logs_operacoes').insert({operacao:'ENTRADA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,status:'SUCESSO'});
+        await loadBlocos();await loadHistorico();
+        toast(`✅ ${n} fardos de ${lote} registrados!`);
+        actionTab='lotes';renderMapa();renderBlocoPanel();
+      }catch(e){
+        console.error('[ENTRADA] Erro:',e);
+        toast('Erro ao salvar: '+(e.message||'Falha na gravação.'),'err');
+      }finally{if(btnE)btnE.disabled=false;}
+    };
+    return;
+  }
+
+  /* ───────── SAÍDA ───────── */
+  if(actionTab==='saida'){
+    if(!ls.length){body.innerHTML=`<div class="empty-msg">Nenhum lote para remover.</div>`;return;}
+    const selObj=selectedLote?ls.find(l=>l.id===selectedLote):null;
+    body.innerHTML=ls.map(l=>{const st=ps(l.produto);return `<div class="lote-row${selectedLote===l.id?' sel':''}" data-lid="${l.id}" style="border-left:4px solid ${st.dot}"><div><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div></div><div class="lote-qty">${l.fardos}</div></div>`;}).join('')+(selObj?`<div class="ff" style="margin-top:10px"><label>Quantidade a retirar (máx. ${selObj.fardos})</label><input id="f-sqtd" type="number" min="1" max="${selObj.fardos}" placeholder="${selObj.fardos}"></div><div class="ff"><label>Número NF (opcional)</label><input id="f-snf" placeholder="NF de saída"></div><div class="ff"><label>Observação (opcional)</label><textarea id="f-sobs" placeholder="Ex: Enviado para processamento, NF 12345…"></textarea></div><button class="btn btn-red btn-full" id="btn-saida">📤 Registrar Saída</button>`:'');
+    body.querySelectorAll('[data-lid]').forEach(el=>{el.addEventListener('click',()=>{selectedLote=el.dataset.lid;renderBlocoPanel();});});
+    if(selObj){
+      document.getElementById('btn-saida').onclick=async()=>{
+        const n=parseInt(document.getElementById('f-sqtd').value);
+        const nf=document.getElementById('f-snf').value.trim()||null;
+        const obs=document.getElementById('f-sobs').value.trim()||null;
+        if(!n||n<=0)return toast('Quantidade inválida.','err');
+        if(n>selObj.fardos)return toast(`Máximo: ${selObj.fardos}.`,'err');
+        document.getElementById('btn-saida').disabled=true;
+        try{
+          const saldoFinal=selObj.fardos-n;
+          if(n===selObj.fardos){await sb.from('lotes').delete().eq('id',selObj.id);}else{await sb.from('lotes').update({fardos:saldoFinal}).eq('id',selObj.id);}
+          const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',subtipo:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,saldo_apos:saldoFinal,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
+          if(e1)throw e1;
+          await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});
+          await loadBlocos();await loadHistorico();
+          toast(`✅ Saída de ${n} fardos registrada!`);
+          selectedLote=null;actionTab='lotes';renderMapa();renderBlocoPanel();
+        }catch(e){
+          console.error('[SAÍDA] Erro:',e);
+          toast('Erro ao salvar: '+(e.message||'Falha na gravação.'),'err');
+        }finally{const btn=document.getElementById('btn-saida');if(btn)btn.disabled=false;}
+      };
+    }
+    return;
+  }
+
+  /* ───────── HISTÓRICO DO LOCAL (acessível clicando no bloco do mapa) ───────── */
+  if(actionTab==='hist-local'){
+    body.innerHTML='<div class="empty-msg">🔍 Carregando histórico deste local…</div>';
+    (async()=>{
+      try{
+        const {data,error}=await sb.from('historico').select('*').eq('bloco_id',b.id).order('quando',{ascending:false});
+        if(error)throw error;
+        const loteAtualTxt=ls.length?ls.map(l=>`${l.lote} (${l.fardos})`).join(', '):'Bloco vazio';
+        let h=`<div class="qual-loc-box"><div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Lote(s) atual(is)</div><div style="font-size:14px;font-weight:700;color:var(--accent2);">${loteAtualTxt}</div></div>`;
+        if(!data||!data.length){h+='<div class="empty-msg">Nenhuma movimentação registrada para este local ainda.</div>';body.innerHTML=h;return;}
+        h+=data.map(m=>{
+          const dt=new Date(m.quando);
+          const tipoLbl=m.acao==='ENTRADA'?(m.subtipo==='COMPLEMENTO'?'COMPLEMENTAÇÃO':'ENTRADA'):'SAÍDA';
+          const badgeCls=m.acao==='ENTRADA'?(m.subtipo==='COMPLEMENTO'?'badge-comp':'badge-in'):'badge-out';
+          return `<div class="hist-row"><div class="hist-top"><div style="flex:1">
+            <span class="badge ${badgeCls}">${tipoLbl}</span>
+            <div class="hist-lote">${m.lote}</div>
+            <div class="hist-meta">${m.produto||''}</div>
+            <div class="hist-meta">📅 ${dt.toLocaleDateString('pt-BR')} 🕐 ${dt.toLocaleTimeString('pt-BR')}</div>
+            <div class="hist-meta">👤 <strong>${m.usuario_nome}</strong></div>
+            ${m.numero_nf?`<div class="hist-meta">📄 NF: ${m.numero_nf}</div>`:''}
+            ${m.saldo_apos!=null?`<div class="hist-meta">📦 Saldo após: <strong>${m.saldo_apos}</strong></div>`:''}
+          </div><div class="hist-qty" style="color:${m.acao==='ENTRADA'?'var(--green2)':'var(--red2)'}">${m.acao==='ENTRADA'?'+':'-'}${m.fardos}</div></div>
+          ${m.observacao?`<div class="hist-obs">📝 ${m.observacao}</div>`:''}</div>`;
+        }).join('');
+        body.innerHTML=h;
+      }catch(e){
+        console.error('[HIST-LOCAL] Erro:',e);
+        body.innerHTML=`<div class="empty-msg">❌ Erro ao carregar histórico: ${e.message}</div>`;
+      }
+    })();
+    return;
+  }
 }
 
 function renderEstoque(){
@@ -737,7 +935,36 @@ function renderAuditList(q,type){
   const el=document.getElementById('auditoria-list');
   const lista=auditoria.filter(a=>{const mq=!q||a.usuario_nome?.toUpperCase().includes(q.toUpperCase())||a.tabela?.toUpperCase().includes(q.toUpperCase());return mq&&(!type||a.acao===type);});
   if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhuma auditoria encontrada.</div>`;return;}
-  el.innerHTML=lista.map(a=>{return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge" style="background:#7F77DD44;border:1px solid #7F77DD;color:#AFA9EC">${a.acao}</span><div class="hist-lote">${a.tabela}</div><div class="hist-meta">Usuário: <strong>${a.usuario_nome}</strong></div><div class="hist-meta">Data: <strong>${new Date(a.criado_em).toLocaleString('pt-BR')}</strong></div></div></div><div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:8px;font-size:11px;color:var(--muted);"><strong>Antes:</strong> ${JSON.stringify(a.dados_antigos||{}).substring(0,100)}…<br><strong>Depois:</strong> ${JSON.stringify(a.dados_novos||{}).substring(0,100)}…</div>${a.motivo?`<div style="margin-top:8px;font-size:12px;color:#AFA9EC;font-style:italic;">Motivo: ${a.motivo}</div>`:''}`;}).join('');
+  el.innerHTML=lista.map(a=>{
+    const podeRestaurar=isAdmin()&&a.acao==='EXCLUSÃO'&&a.dados_antigos&&['historico','qualidade_linter','usuarios'].includes(a.tabela);
+    return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge" style="background:#7F77DD44;border:1px solid #7F77DD;color:#AFA9EC">${a.acao}</span><div class="hist-lote">${a.tabela}</div><div class="hist-meta">Usuário: <strong>${a.usuario_nome}</strong></div><div class="hist-meta">Data: <strong>${new Date(a.criado_em).toLocaleString('pt-BR')}</strong></div></div></div><div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:8px;font-size:11px;color:var(--muted);"><strong>Antes:</strong> ${JSON.stringify(a.dados_antigos||{}).substring(0,100)}…<br><strong>Depois:</strong> ${JSON.stringify(a.dados_novos||{}).substring(0,100)}…</div>${a.motivo?`<div style="margin-top:8px;font-size:12px;color:#AFA9EC;font-style:italic;">Motivo: ${a.motivo}</div>`:''}${podeRestaurar?`<div style="margin-top:8px;"><button class="btn-restore" data-aid="${a.id}">↩ Restaurar registro excluído</button></div>`:''}</div>`;
+  }).join('');
+  el.querySelectorAll('.btn-restore[data-aid]').forEach(b=>b.onclick=()=>restaurarRegistro(b.dataset.aid));
+}
+
+async function restaurarRegistro(auditId){
+  if(!isAdmin())return toast('Apenas administradores podem restaurar registros.','err');
+  const a=auditoria.find(x=>String(x.id)===String(auditId));
+  if(!a||!a.dados_antigos)return toast('Dados originais não encontrados para restauração.','err');
+  if(!confirm(`Restaurar este registro excluído da tabela "${a.tabela}"?`))return;
+  try{
+    console.log('[RESTAURAR] Restaurando registro:',a);
+    const payload={...a.dados_antigos};
+    delete payload.id; // deixa o banco gerar novo ID
+    const {data:novo,error}=await sb.from(a.tabela).insert(payload).select();
+    if(error)throw error;
+    await sb.from('auditoria').insert({acao:'RESTAURAÇÃO',tabela:a.tabela,registro_id:novo?.[0]?.id||null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:payload,motivo:`Restauração do registro excluído (auditoria #${auditId})`});
+    // Recarrega os dados da tabela afetada
+    if(a.tabela==='historico')await loadHistorico();
+    if(a.tabela==='qualidade_linter')await loadQualidade();
+    if(a.tabela==='usuarios')await loadUsuarios();
+    await loadAuditoria();
+    toast('✅ Registro restaurado com sucesso!');
+    renderAuditList('','');
+  }catch(e){
+    console.error('[RESTAURAR] Erro:',e);
+    toast('Erro ao restaurar: '+e.message,'err');
+  }
 }
 
 function openEditModal(id){
@@ -814,31 +1041,38 @@ document.getElementById('btn-cancel-delete').onclick=()=>{document.getElementByI
 let editUserId=null;
 document.getElementById('btn-save-user').onclick=async()=>{
   if(!editUserId)return;
+  if(!isAdmin())return toast('Apenas administradores podem editar usuários.','err');
   const nome=document.getElementById('edt-user-nome').value.trim();
   const login=document.getElementById('edt-user-login').value.trim().toLowerCase();
   const role=document.getElementById('edt-user-role').value;
   if(!nome||!login)return toast('Nome e login obrigatórios.','err');
   document.getElementById('btn-save-user').disabled=true;
   try{
+    const antigo=usuarios.find(u=>String(u.id)===String(editUserId));
     const upd={nome,login,role};
     const senha=document.getElementById('edt-user-senha').value;
     if(senha)upd.senha=senha;
-    await sb.from('usuarios').update(upd).eq('id',editUserId);
+    const {error}=await sb.from('usuarios').update(upd).eq('id',editUserId);
+    if(error)throw error;
+    await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'usuarios',registro_id:editUserId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:antigo?{nome:antigo.nome,login:antigo.login,role:antigo.role}:null,dados_novos:{nome,login,role},motivo:null});
     await loadUsuarios();
     toast('✅ Usuário atualizado!');
     document.getElementById('modal-edit-user').classList.remove('show');
     editUserId=null;
     renderAdmin();
-  }catch{toast('Erro ao atualizar.','err');}
+  }catch(e){console.error('[USUÁRIOS] Erro ao atualizar:',e);toast('Erro ao atualizar: '+e.message,'err');}
   finally{document.getElementById('btn-save-user').disabled=false;}
 };
 
 document.getElementById('btn-cancel-user').onclick=()=>{document.getElementById('modal-edit-user').classList.remove('show');editUserId=null;};
 
 async function delUser(id){
+  if(!isAdmin())return toast('Apenas administradores podem excluir usuários.','err');
   try{
+    const antigo=usuarios.find(u=>String(u.id)===String(id));
     const {error}=await sb.from('usuarios').delete().eq('id',id);
     if(error){toast('Erro: '+error.message,'err');console.error(error);return;}
+    await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'usuarios',registro_id:id,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:antigo||null,dados_novos:null,motivo:'Exclusão de usuário pelo administrador'});
     await loadUsuarios();
     toast('✅ Usuário excluído!');
     renderAdmin();
@@ -1165,8 +1399,15 @@ async function loadQualidade(){
   console.log('[QUALIDADE] Iniciando carga de dados...');
   try{
     console.log('[QUALIDADE] Consultando Supabase – tabela qualidade_linter...');
-    const {data,error}=await sb.from('qualidade_linter').select('*').order('criado_em',{ascending:false}).limit(500);if(error){console.error('[QUALIDADE] Erro Supabase:',error);qualidade=[];}
-    else{qualidade=data||[];console.log('[QUALIDADE] Registros carregados:',qualidade.length);}
+    const {data,error}=await sb.from('qualidade_linter').select('*').order('criado_em',{ascending:false}).limit(500);
+    if(error){
+      console.error('[QUALIDADE] Erro Supabase ao consultar:',{message:error.message,code:error.code,details:error.details,hint:error.hint});
+      qualidade=[];
+      if(error.code==='42P01')toast('⚠ Tabela de qualidade não existe no banco. Veja o console para o SQL necessário.','err');
+    }else{
+      qualidade=data||[];
+      console.log('[QUALIDADE] Registros carregados com sucesso:',qualidade.length);
+    }
   }catch(e){console.error('[QUALIDADE] Erro inesperado:',e);qualidade=[];}
 }
 
@@ -1386,20 +1627,50 @@ async function salvarAnalise(){
   const imp=parseFloat(document.getElementById('qf-impureza').value)||null;
   const obs=document.getElementById('qf-obs').value.trim()||null;
   if(cel===null&&um===null&&res===null&&imp===null)return toast('Informe pelo menos um indicador.','err');
+  if(!currentUser?.id){toast('Sessão inválida. Faça login novamente.','err');return;}
   const btn=document.getElementById('btn-salvar-analise');btn.disabled=true;
   try{
-    const rec={lote:loteEl.value,rua:o.dataset.rua,avenida:o.dataset.av,produto:o.dataset.prod,fardos_estoque:parseInt(o.dataset.fardos)||null,celulose:cel,umidade:um,residuo_oleo:res,impureza:imp,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,criado_em:new Date().toISOString()};
-    const {data:saved,error}=await sb.from('qualidade_linter').insert(rec).select().single();
-    if(error)throw error;
-    await sb.from('auditoria').insert({acao:'INCLUSÃO',tabela:'qualidade_linter',registro_id:saved.id,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:rec,motivo:null});
+    const rec={lote:loteEl.value,rua:o.dataset.rua||null,avenida:o.dataset.av||null,produto:o.dataset.prod||null,fardos_estoque:parseInt(o.dataset.fardos)||null,celulose:cel,umidade:um,residuo_oleo:res,impureza:imp,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,criado_em:new Date().toISOString()};
+    console.log('[QUALIDADE] Payload de inserção:',rec);
+
+    // INSERT sem .single() — evita falha caso a leitura pós-insert seja bloqueada
+    const {data:savedArr,error}=await sb.from('qualidade_linter').insert(rec).select();
+
+    if(error){
+      // Loga TODOS os detalhes do erro do Supabase para diagnóstico real
+      console.error('[QUALIDADE] Erro Supabase ao inserir:',{
+        message:error.message, code:error.code, details:error.details, hint:error.hint
+      });
+      let msgUsuario=error.message||'Falha desconhecida ao gravar.';
+      if(error.code==='42P01')msgUsuario='Tabela "qualidade_linter" não existe no banco. Peça ao administrador para criar a tabela (ver SQL fornecido).';
+      else if(error.code==='42501'||/permission denied|row-level security/i.test(error.message||''))msgUsuario='Permissão negada pelo banco (RLS). Peça ao administrador para desabilitar RLS na tabela qualidade_linter ou criar uma policy de INSERT/SELECT.';
+      else if(error.code==='22P02'||/invalid input syntax/i.test(error.message||''))msgUsuario='Tipo de dado inválido para um dos campos. Verifique os valores informados.';
+      toast('❌ Erro ao salvar: '+msgUsuario,'err');
+      return;
+    }
+
+    const saved=Array.isArray(savedArr)&&savedArr.length?savedArr[0]:rec;
+    console.log('[QUALIDADE] Registro salvo com sucesso:',saved);
+
+    // Auditoria — não bloqueia o fluxo principal se falhar
+    try{
+      await sb.from('auditoria').insert({acao:'INCLUSÃO',tabela:'qualidade_linter',registro_id:saved.id||null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:rec,motivo:null});
+    }catch(auditErr){console.warn('[QUALIDADE] Falha ao gravar auditoria (não bloqueante):',auditErr);}
+
     await loadQualidade();
-    toast('✅ Análise registrada com sucesso!');
+    // Confirma que o registro realmente está acessível para consulta
+    const confirmado=qualidade.some(q=>String(q.id)===String(saved.id));
+    console.log('[QUALIDADE] Confirmação pós-reload — registro encontrado na consulta:',confirmado);
+
+    toast('✅ Análise registrada e confirmada no banco de dados!');
     ['qf-lote','qf-celulose','qf-umidade','qf-residuo','qf-impureza','qf-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     ['qf-rua-d','qf-av-d','qf-prod-d','qf-fardos-d'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
     document.getElementById('qf-alertas').style.display='none';
-    const al=checkAlerta(rec);if(al.length)toast(`⚠ Análise salva com ${al.length} alerta(s)`,'err');
-  }catch(e){toast('Erro ao salvar: '+e.message,'err');}
-  finally{btn.disabled=false;}
+    const al=checkAlerta(rec);if(al.length)toast(`⚠ Análise salva com ${al.length} alerta(s) de qualidade`,'err');
+  }catch(e){
+    console.error('[QUALIDADE] Erro inesperado (exceção JS):',e);
+    toast('❌ Erro inesperado ao salvar: '+e.message,'err');
+  }finally{btn.disabled=false;}
 }
 
 /* ── Histórico de qualidade ── */
