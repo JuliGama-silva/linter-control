@@ -497,7 +497,17 @@ async function loadAll(){await Promise.all([loadBlocos(),loadHistorico(),loadUsu
 async function loadBlocos(){const {data:bd}=await sb.from('blocos').select('*').order('id');const {data:ld}=await sb.from('lotes').select('*').order('entrada_em');blocos=bd||[];lotes=ld||[];}
 async function loadHistorico(){const {data}=await sb.from('historico').select('*').order('quando',{ascending:false}).limit(300);historico=data||[];}
 async function loadUsuarios(){if(!isAdmin())return;const {data}=await sb.from('usuarios').select('*').order('nome');usuarios=data||[];}
-async function loadAuditoria(){const {data}=await sb.from('auditoria').select('*').order('criado_em',{ascending:false}).limit(200);auditoria=data||[];}
+async function loadAuditoria(){
+  console.log('[AUDITORIA][DEBUG] Consultando tabela auditoria...');
+  const {data,error}=await sb.from('auditoria').select('*').order('criado_em',{ascending:false}).limit(200);
+  if(error){
+    console.error('[AUDITORIA][DEBUG] Erro Supabase ao consultar auditoria:',{message:error.message,code:error.code,details:error.details,hint:error.hint});
+    auditoria=[];
+    return;
+  }
+  auditoria=data||[];
+  console.log('[AUDITORIA][DEBUG] Registros de auditoria carregados:',auditoria.length);
+}
 async function loadConfiguracoes(){
   try{
     const {data}=await sb.from('configuracoes').select('*');
@@ -563,7 +573,7 @@ async function doLogin(){
     document.getElementById('topbar-role').textContent=data.role==='admin'?'Administrador':'Operador';
     if(!isAdmin()){document.getElementById('nav-audit').classList.add('hidden-nav');document.getElementById('nav-admin').classList.add('hidden-nav');}
     // Registro de login na auditoria — não bloqueante: nunca interfere no fluxo de login
-    sb.from('auditoria').insert({acao:'LOGIN',tabela:'usuarios',registro_id:data.id,usuario_id:data.id,usuario_nome:data.nome,dados_antigos:null,dados_novos:null,motivo:'Login realizado com sucesso'}).then(({error})=>{if(error)console.warn('[AUDITORIA] Falha ao registrar login (não bloqueante):',error);}).catch(e=>console.warn('[AUDITORIA] Falha ao registrar login (não bloqueante):',e));
+    sb.from('auditoria').insert({acao:'LOGIN',tabela:'usuarios',registro_id:data.id,usuario_id:data.id,usuario_nome:data.nome,dados_antigos:null,dados_novos:null,motivo:'Login realizado com sucesso'}).then(({error})=>{if(error)console.error('[AUDITORIA][DEBUG] Falha ao registrar LOGIN:',{message:error.message,code:error.code,details:error.details,hint:error.hint});else console.log('[AUDITORIA][DEBUG] LOGIN registrado com sucesso.');}).catch(e=>console.error('[AUDITORIA][DEBUG] Erro inesperado ao registrar LOGIN:',e));
     await loadAll();showTab('mapa');
   }catch{err.textContent='Erro de conexão.';err.classList.remove('hidden');}
   finally{document.getElementById('btn-login').disabled=false;document.getElementById('btn-login').textContent='Entrar';}
@@ -682,7 +692,7 @@ function renderPanelBody(b,livre){
           // Registro de auditoria — não bloqueante: a complementação já foi concluída com sucesso acima
           try{
             await sb.from('auditoria').insert({acao:'COMPLEMENTAÇÃO',tabela:'historico',registro_id:null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{lote:existente.lote,rua:b.rua,avenida:b.avenida,fardos:existente.fardos},dados_novos:{lote:existente.lote,rua:b.rua,avenida:b.avenida,fardos_adicionados:n,saldo_final:novoTotal},motivo:`Complementação de lote em Rua ${b.rua} / Avenida ${b.avenida}`});
-          }catch(auditErr){console.warn('[AUDITORIA] Falha ao registrar complementação (não bloqueante):',auditErr);}
+          }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar COMPLEMENTAÇÃO:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
           await loadBlocos();await loadHistorico();
           toast(`✅ Lote ${existente.lote} complementado! Saldo: ${novoTotal}/${b.capacidade}`);
           actionTab='lotes';renderMapa();renderBlocoPanel();
@@ -709,7 +719,7 @@ function renderPanelBody(b,livre){
         // Registro de auditoria — não bloqueante: a entrada já foi concluída com sucesso acima
         try{
           await sb.from('auditoria').insert({acao:'ENTRADA',tabela:'historico',registro_id:null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:{lote,rua:b.rua,avenida:b.avenida,produto:prod,fardos:n},motivo:`Entrada inicial em Rua ${b.rua} / Avenida ${b.avenida}`});
-        }catch(auditErr){console.warn('[AUDITORIA] Falha ao registrar entrada (não bloqueante):',auditErr);}
+        }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar ENTRADA:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
         await loadBlocos();await loadHistorico();
         toast(`✅ ${n} fardos de ${lote} registrados!`);
         actionTab='lotes';renderMapa();renderBlocoPanel();
@@ -744,7 +754,7 @@ function renderPanelBody(b,livre){
           // Registro de auditoria — não bloqueante: a saída já foi concluída com sucesso acima
           try{
             await sb.from('auditoria').insert({acao:'SAÍDA',tabela:'historico',registro_id:null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{lote:selObj.lote,rua:b.rua,avenida:b.avenida,fardos:selObj.fardos},dados_novos:{lote:selObj.lote,rua:b.rua,avenida:b.avenida,fardos_retirados:n,saldo_final:saldoFinal},motivo:`Saída em Rua ${b.rua} / Avenida ${b.avenida}`});
-          }catch(auditErr){console.warn('[AUDITORIA] Falha ao registrar saída (não bloqueante):',auditErr);}
+          }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar SAÍDA:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
           await loadBlocos();await loadHistorico();
           toast(`✅ Saída de ${n} fardos registrada!`);
           selectedLote=null;actionTab='lotes';renderMapa();renderBlocoPanel();
@@ -953,12 +963,17 @@ async function renderLocalList(){
   }
 }
 
-function renderAuditoria(){
+async function renderAuditoria(){
   const inp=document.getElementById('audit-search');
   const sel=document.getElementById('audit-filter');
   inp.oninput=e=>{renderAuditList(e.target.value,sel.value);};
   sel.onchange=e=>{renderAuditList(inp.value,e.target.value);};
-  renderAuditList('','');
+  // CORREÇÃO: antes a tela só exibia o snapshot carregado no login.
+  // Agora, toda vez que a aba Auditoria é aberta, busca os dados mais recentes do banco.
+  const el=document.getElementById('auditoria-list');
+  if(el)el.innerHTML='<div class="empty-msg">🔍 Carregando registros de auditoria…</div>';
+  await loadAuditoria();
+  renderAuditList(inp.value||'',sel.value||'');
 }
 function renderAuditList(q,type){
   const el=document.getElementById('auditoria-list');
@@ -1706,7 +1721,7 @@ async function salvarAnalise(){
     // Auditoria — não bloqueia o fluxo principal se falhar
     try{
       await sb.from('auditoria').insert({acao:'INCLUSÃO',tabela:'qualidade_linter',registro_id:saved.id||null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:rec,motivo:null});
-    }catch(auditErr){console.warn('[QUALIDADE] Falha ao gravar auditoria (não bloqueante):',auditErr);}
+    }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar INCLUSÃO de qualidade:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
 
     await loadQualidade();
     // Confirma que o registro realmente está acessível para consulta
@@ -1823,7 +1838,7 @@ document.getElementById('btn-save-qual-edit').onclick=async()=>{
     if(antigo){
       try{
         await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'qualidade_linter',registro_id:qualEditId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{celulose:antigo.celulose,umidade:antigo.umidade,residuo_oleo:antigo.residuo_oleo,impureza:antigo.impureza,observacao:antigo.observacao},dados_novos:patch,motivo:null});
-      }catch(auditErr){console.warn('[QUALIDADE] Falha ao gravar auditoria da edição (não bloqueante):',auditErr);}
+      }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar EDIÇÃO de qualidade:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
     }
     await loadQualidade();
     if(typeof renderQualDashboard==='function')renderQualDashboard();
@@ -1845,7 +1860,9 @@ async function excluirAnalise(id,lote){
     const antigo=qualidade.find(x=>String(x.id)===String(id));
     const {error}=await sb.from('qualidade_linter').delete().eq('id',id);
     if(error)throw error;
-    await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'qualidade_linter',registro_id:id,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:antigo||null,dados_novos:null,motivo:'Exclusão pelo administrador'});
+    try{
+      await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'qualidade_linter',registro_id:id,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:antigo||null,dados_novos:null,motivo:'Exclusão pelo administrador'});
+    }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar EXCLUSÃO de qualidade:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
     await loadQualidade();toast('✅ Análise excluída!');buscarQualHist();
   }catch(e){toast('Erro: '+e.message,'err');}
 }
