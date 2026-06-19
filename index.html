@@ -430,6 +430,114 @@
     /* ── OLD NAV-BAR: hide completely (replaced by sidebar) ── */
     .nav-bar{display:none !important;}
 
+  
+    /* ═══════════════════════════════════════════════════════════
+       HISTÓRICO — visual profissional tipo ERP/Power BI
+       Escopado em #tab-historico para não afetar Auditoria/Por Local/Qualidade
+       ═══════════════════════════════════════════════════════════ */
+
+    /* KPI cards do Histórico */
+    #tab-historico .hist-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}
+    @media(max-width:760px){#tab-historico .hist-kpi-row{grid-template-columns:1fr;}}
+    #tab-historico .hist-kpi-card{
+      background:var(--card);border:1px solid var(--border);border-radius:12px;
+      padding:16px 18px;display:flex;align-items:center;gap:14px;
+      box-shadow:0 2px 8px rgba(0,0,0,.25);
+    }
+    #tab-historico .hist-kpi-card .hkc-icon{
+      width:46px;height:46px;border-radius:10px;display:flex;align-items:center;
+      justify-content:center;font-size:21px;flex-shrink:0;
+    }
+    #tab-historico .hkc-in{background:rgba(74,222,128,.15);}
+    #tab-historico .hkc-out{background:rgba(252,165,165,.15);}
+    #tab-historico .hkc-tot{background:rgba(212,149,10,.18);}
+    #tab-historico .hkc-val{font-size:24px;font-weight:800;color:var(--text);line-height:1.1;}
+    #tab-historico .hkc-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;}
+
+    /* Barra de filtros */
+    #tab-historico .hist-filter-bar{
+      background:var(--surface);border:1px solid var(--border);border-radius:12px;
+      padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    }
+    #tab-historico .hist-filter-bar-label{font-size:12px;font-weight:700;color:var(--accent2);flex-shrink:0;}
+    #tab-historico .hist-filters{flex:1;display:flex;gap:10px;flex-wrap:wrap;margin:0;}
+    #tab-historico .hist-input{height:42px;font-size:14px;border-radius:9px;}
+
+    /* Painel de exportação — leve ajuste de espaçamento */
+    #tab-historico .export-toggle{margin-bottom:12px;height:44px;font-size:13px;}
+
+    /* ── Tabela larga (desktop) ── */
+    #tab-historico .htbl-head{
+      display:none;
+      grid-template-columns:92px 1.1fr 1.05fr 1fr 110px 1.2fr 1.35fr 0.95fr 150px;
+      gap:0;background:var(--surface);border:1px solid var(--border);border-radius:10px 10px 0 0;
+      padding:11px 16px;font-size:11px;font-weight:800;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.5px;
+    }
+    #tab-historico .htbl-row{
+      display:grid;grid-template-columns:92px 1.1fr 1.05fr 1fr 110px 1.2fr 1.35fr 0.95fr 150px;
+      align-items:center;gap:0;
+      background:var(--card);border:1px solid var(--border);border-top:none;
+      padding:14px 16px;position:relative;
+    }
+    #tab-historico .htbl-head + #historico-list .htbl-row:first-child{border-top:1px solid var(--border);}
+    #tab-historico #historico-list .htbl-row{border-top:1px solid var(--border);border-radius:0;margin-bottom:0;}
+    #tab-historico #historico-list .htbl-row:last-child{border-radius:0 0 10px 10px;}
+    #tab-historico #historico-list .htbl-row:hover{background:#27304a;}
+    #tab-historico .htbl-c{padding-right:10px;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    #tab-historico .htbl-lote-name{font-weight:800;font-size:14px;}
+    #tab-historico .htbl-prod{font-weight:600;}
+    #tab-historico .htbl-local{color:var(--muted);font-size:12px;}
+    #tab-historico .htbl-qty{font-size:20px;font-weight:900;letter-spacing:.3px;}
+    #tab-historico .htbl-qty.q-in{color:#22C55E;}
+    #tab-historico .htbl-qty.q-out{color:#EF4444;}
+    #tab-historico .htbl-user{font-size:12.5px;}
+    #tab-historico .htbl-date{font-size:12px;color:var(--muted);}
+    #tab-historico .htbl-nf{font-size:12px;color:var(--muted);}
+    #tab-historico .htbl-actions{display:flex;gap:6px;justify-content:flex-end;}
+    #tab-historico .htbl-obs{
+      grid-column:1/-1;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);
+      font-size:12.5px;color:var(--muted);font-style:italic;
+    }
+    #tab-historico .htbl-badge{
+      display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;
+      padding:5px 10px;border-radius:7px;letter-spacing:.5px;text-transform:uppercase;
+    }
+    #tab-historico .htbl-badge.b-in{background:rgba(34,197,94,.18);color:#4ADE80;border:1px solid rgba(34,197,94,.4);}
+    #tab-historico .htbl-badge.b-out{background:rgba(239,68,68,.18);color:#FCA5A5;border:1px solid rgba(239,68,68,.4);}
+    #tab-historico .htbl-edited{font-size:10px;background:rgba(212,149,10,.25);color:var(--accent2);padding:1px 6px;border-radius:5px;margin-left:6px;}
+
+    /* Botões Editar/Excluir maiores e mais visíveis (somente no Histórico) */
+    #tab-historico .btn-edit{
+      background:var(--accent);color:#0B1220;padding:8px 14px;border-radius:8px;
+      border:none;cursor:pointer;font-size:12px;font-weight:700;
+      box-shadow:0 2px 6px rgba(212,149,10,.3);transition:transform .12s,box-shadow .12s;
+    }
+    #tab-historico .btn-edit:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(212,149,10,.45);}
+    #tab-historico .btn-delete{
+      background:#7F1D1D;color:#FEE2E2;padding:8px 14px;border-radius:8px;
+      border:none;cursor:pointer;font-size:12px;font-weight:700;
+      box-shadow:0 2px 6px rgba(127,29,29,.35);transition:transform .12s,box-shadow .12s;
+    }
+    #tab-historico .btn-delete:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(127,29,29,.5);}
+
+    /* Desktop ≥ 1100px: ativa visual de tabela */
+    @media(min-width:1100px){
+      #tab-historico .htbl-head{display:grid;}
+      #tab-historico #historico-list .htbl-row{border-radius:0;}
+    }
+    /* Abaixo de 1100px: cards empilhados (mobile/tablet) */
+    @media(max-width:1099px){
+      #tab-historico .htbl-row{
+        display:flex;flex-direction:column;align-items:stretch;gap:6px;
+        border-radius:10px;margin-bottom:10px;border-top:1px solid var(--border) !important;
+      }
+      #tab-historico .htbl-c{white-space:normal;}
+      #tab-historico .htbl-c[data-label]::before{content:attr(data-label);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:2px;}
+      #tab-historico .htbl-actions{justify-content:flex-start;margin-top:4px;}
+      #tab-historico .htbl-qty{font-size:24px;}
+    }
+
   </style>
 </head>
 <body>
@@ -520,13 +628,19 @@
 
     <div id="tab-historico" class="hidden">
       <div class="sec-header"><h2>Histórico completo</h2><p>Movimentações com auditoria</p></div>
-      <div class="hist-filters">
-        <input class="hist-input" id="hist-search" placeholder="Buscar lote, produto, usuário…"/>
-        <select class="hist-input" id="hist-filter" style="flex:0;min-width:110px;">
-          <option value="">Todos</option>
-          <option value="ENTRADA">Entradas</option>
-          <option value="SAIDA">Saídas</option>
-        </select>
+
+      <div id="hist-kpi-row" class="hist-kpi-row"></div>
+
+      <div class="hist-filter-bar">
+        <div class="hist-filter-bar-label">🔎 Filtros</div>
+        <div class="hist-filters">
+          <input class="hist-input" id="hist-search" placeholder="Buscar lote, produto, usuário…"/>
+          <select class="hist-input" id="hist-filter" style="flex:0;min-width:150px;">
+            <option value="">Todos os tipos</option>
+            <option value="ENTRADA">Entradas</option>
+            <option value="SAIDA">Saídas</option>
+          </select>
+        </div>
       </div>
 
       <!-- painel de exportação -->
@@ -562,6 +676,17 @@
         </button>
       </div>
 
+      <div class="htbl-head">
+        <div class="htbl-cell">Tipo</div>
+        <div class="htbl-cell">Lote</div>
+        <div class="htbl-cell">Produto</div>
+        <div class="htbl-cell">Local</div>
+        <div class="htbl-cell">Quantidade</div>
+        <div class="htbl-cell">Usuário</div>
+        <div class="htbl-cell">Data / Hora</div>
+        <div class="htbl-cell">NF</div>
+        <div class="htbl-cell">Ações</div>
+      </div>
       <div id="historico-list"></div>
     </div>
 
@@ -722,7 +847,7 @@ const SUPABASE_ANON='sb_publishable_5N_4oXK1pIre2P_nA50GQQ_njLv8Xwr';
 const {createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
 
-const RUAS=['V','U','T','S','R','Q','P','O','N','M','L','K','J','I','H','G','F','E','D','C','B','A'];
+const RUAS=['Y','X','W','V','U','T','S','R','Q','P','O','N','M','L','K','J','I','H','G','F','E','D','C','B','A'];
 const AVS_E=[1,2,3,4,5,6,7,8];
 const AVS_D=[9,10,11,12,13,14,15,16,17];
 const PRODS=['Linter','Fibrilha','Algodãozinho','Fibrilha Torre'];
@@ -1094,14 +1219,49 @@ function renderHistorico(){
   inp.oninput=e=>{histSearch=e.target.value;renderHistList();};
   sel.onchange=e=>{histFilter=e.target.value;renderHistList();};
   initExportPanel();
+  renderHistKPI();
   renderHistList();
+}
+
+/* KPIs do Histórico — apenas leitura visual do array já carregado, sem nova consulta */
+function renderHistKPI(){
+  const el=document.getElementById('hist-kpi-row');
+  if(!el)return;
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  const doDia=historico.filter(h=>h.quando&&new Date(h.quando).toLocaleDateString('pt-BR')===hoje);
+  const entradas=doDia.filter(h=>h.acao==='ENTRADA').reduce((s,h)=>s+h.fardos,0);
+  const saidas=doDia.filter(h=>h.acao==='SAIDA').reduce((s,h)=>s+h.fardos,0);
+  el.innerHTML=
+    `<div class="hist-kpi-card"><div class="hkc-icon hkc-in">📥</div><div><div class="hkc-val" style="color:#4ADE80">+${entradas}</div><div class="hkc-lbl">Entradas hoje</div></div></div>`+
+    `<div class="hist-kpi-card"><div class="hkc-icon hkc-out">📤</div><div><div class="hkc-val" style="color:#FCA5A5">-${saidas}</div><div class="hkc-lbl">Saídas hoje</div></div></div>`+
+    `<div class="hist-kpi-card"><div class="hkc-icon hkc-tot">🔄</div><div><div class="hkc-val">${entradas+saidas}</div><div class="hkc-lbl">Total movimentado hoje</div></div></div>`;
 }
 function renderHistList(){
   const el=document.getElementById('historico-list');
   const q=histSearch.toUpperCase();
   const lista=historico.filter(h=>{const mq=!q||h.lote?.toUpperCase().includes(q)||h.produto?.toUpperCase().includes(q)||h.usuario_nome?.toUpperCase().includes(q)||String(h.rua||'').includes(q)||String(h.avenida||'').includes(q);return mq&&(!histFilter||h.acao===histFilter);});
   if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhum registro encontrado.</div>`;return;}
-  el.innerHTML=lista.slice(0,200).map(h=>{const st=ps(h.produto);const isEdited=h.editado_em?` <span class="audit-badge">✎ Editado</span>`:'';return `<div class="hist-row"><div class="hist-top"><div style="flex:1"><span class="badge ${h.acao==='ENTRADA'?'badge-in':'badge-out'}">${h.acao}</span><div class="hist-lote">${h.lote} <span style="font-size:11px;color:${st.dot};font-weight:600">${h.produto||''}</span>${isEdited}</div><div class="hist-meta">📍 Rua ${h.rua||'—'} · Av ${h.avenida||'—'}</div><div class="hist-meta">👤 <strong>${h.usuario_nome}</strong></div><div class="hist-meta">🕐 ${new Date(h.quando).toLocaleString('pt-BR')}</div>${h.numero_nf?`<div class="hist-meta">📄 NF: ${h.numero_nf}</div>`:''}</div><div class="hist-qty" style="color:${h.acao==='ENTRADA'?'var(--green2)':'var(--red2)'}">${h.acao==='ENTRADA'?'+':'-'}${h.fardos}</div></div>${h.observacao?`<div class="hist-obs">📝 ${h.observacao}</div>`:''}${isAdmin()?`<div class="hist-actions"><button class="btn-edit" data-id="${h.id}" data-obs="${h.observacao||''}" data-nf="${h.numero_nf||''}">Editar</button><button class="btn-delete" data-id="${h.id}" data-lote="${h.lote}" data-qty="${h.fardos}">Excluir</button></div>`:''}`;}).join('');document.querySelectorAll('.btn-edit').forEach(b=>b.onclick=()=>openEditModal(b.dataset.id));document.querySelectorAll('.btn-delete').forEach(b=>b.onclick=()=>openDeleteModal(b.dataset.id,b.dataset.lote,parseInt(b.dataset.qty)));}
+  el.innerHTML=lista.slice(0,200).map(h=>{
+    const st=ps(h.produto);
+    const isEdited=h.editado_em?`<span class="htbl-edited">✎ editado</span>`:'';
+    const isIn=h.acao==='ENTRADA';
+    const dt=new Date(h.quando);
+    return `<div class="htbl-row">
+      <div class="htbl-c" data-label="Tipo"><span class="htbl-badge ${isIn?'b-in':'b-out'}">${isIn?'📥 Entrada':'📤 Saída'}</span></div>
+      <div class="htbl-c htbl-lote-name" data-label="Lote">${h.lote}${isEdited}</div>
+      <div class="htbl-c htbl-prod" data-label="Produto" style="color:${st.dot}">${h.produto||'—'}</div>
+      <div class="htbl-c htbl-local" data-label="Local">📍 Rua ${h.rua||'—'} · Av ${h.avenida||'—'}</div>
+      <div class="htbl-c htbl-qty ${isIn?'q-in':'q-out'}" data-label="Quantidade">${isIn?'+':'-'}${h.fardos}</div>
+      <div class="htbl-c htbl-user" data-label="Usuário">👤 ${h.usuario_nome}</div>
+      <div class="htbl-c htbl-date" data-label="Data / Hora">${dt.toLocaleDateString('pt-BR')} · ${dt.toLocaleTimeString('pt-BR')}</div>
+      <div class="htbl-c htbl-nf" data-label="NF">${h.numero_nf?'📄 '+h.numero_nf:'—'}</div>
+      <div class="htbl-c htbl-actions" data-label="Ações">${isAdmin()?`<button class="btn-edit" data-id="${h.id}" data-obs="${h.observacao||''}" data-nf="${h.numero_nf||''}">Editar</button><button class="btn-delete" data-id="${h.id}" data-lote="${h.lote}" data-qty="${h.fardos}">Excluir</button>`:''}</div>
+      ${h.observacao?`<div class="htbl-obs">📝 ${h.observacao}</div>`:''}
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#tab-historico .btn-edit').forEach(b=>b.onclick=()=>openEditModal(b.dataset.id));
+  document.querySelectorAll('#tab-historico .btn-delete').forEach(b=>b.onclick=()=>openDeleteModal(b.dataset.id,b.dataset.lote,parseInt(b.dataset.qty)));
+}
 function renderLocal(){
   const ruaSel=document.getElementById('filter-rua');
   const avSel=document.getElementById('filter-av');
