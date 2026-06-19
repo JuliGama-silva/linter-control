@@ -1039,7 +1039,9 @@ function renderPanelBody(b,livre){
     function loteExistente(){
       const v=loteInput.value.trim().toUpperCase();
       if(!v)return null;
-      return ls.find(l=>l.lote.toUpperCase()===v)||null;
+      const achado=ls.find(l=>String(l.lote).trim().toUpperCase()===v)||null;
+      console.log('[COMPLEMENTAR][DEBUG] Verificando lote:',v,'| Bloco atual:',b.id,'(Rua',b.rua,'/ Av',b.avenida+')','| Lotes neste bloco:',ls.map(l=>l.lote),'| Encontrado:',achado?achado.lote+' (id='+achado.id+', fardos='+achado.fardos+')':'NENHUM — será tratado como ENTRADA NOVA');
+      return achado;
     }
     function atualizarModo(){
       const existente=loteExistente();
@@ -1071,6 +1073,7 @@ function renderPanelBody(b,livre){
       const obs=document.getElementById('f-obs').value.trim()||null;
       if(!lote)return toast('Informe o número do lote.','err');
       const existente=loteExistente();
+      console.log('[COMPLEMENTAR][DEBUG] Botão clicado. Caminho escolhido:',existente?'UPDATE (complementar lote existente, id='+existente.id+')':'INSERT (criar lote novo)');
 
       /* ── MODO COMPLEMENTAR ── */
       if(existente){
