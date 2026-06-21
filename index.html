@@ -2443,7 +2443,14 @@ showTab=function(tab){
 function renderKPIDash(){
   const el=document.getElementById('dash-kpi-row');if(!el)return;
   const total=lotes.reduce(function(s,l){return s+l.fardos;},0);
-  const ocup=blocos.filter(function(b){return totB(b.id)>0;}).length;
+  // Defesa extra: conta blocos ocupados por bloco_id DISTINTO presente em lotes com saldo > 0,
+  // em vez de depender só da iteração sobre a tabela blocos (que pode conter linhas duplicadas).
+  const blocosOcupadosSet=new Set(lotes.filter(function(l){return l.fardos>0;}).map(function(l){return l.bloco_id;}));
+  const ocup=blocosOcupadosSet.size;
+  // Defesa extra: conta lotes ÚNICOS por combinação (bloco_id + número do lote),
+  // para nunca contar duas vezes o mesmo lote mesmo se existir linha duplicada residual.
+  const lotesUnicosSet=new Set(lotes.map(function(l){return l.bloco_id+'|'+String(l.lote).trim().toUpperCase();}));
+  const lotesAtivos=lotesUnicosSet.size;
   const cap=blocos.reduce(function(s,b){return s+b.capacidade;},0);
   const pct=cap>0?Math.round(total/cap*100):0;
   const hoje=new Date().toLocaleDateString('pt-BR');
@@ -2453,7 +2460,7 @@ function renderKPIDash(){
     '<div class="kpi-wms-card"><div class="kpi-wms-icon c-amber">📦</div><div><div class="kpi-wms-val">'+total.toLocaleString('pt-BR')+'</div><div class="kpi-wms-lbl">Estoque Total (fardos)</div></div></div>'+
     '<div class="kpi-wms-card"><div class="kpi-wms-icon c-blue">🏭</div><div><div class="kpi-wms-val">'+ocup+' / '+blocos.length+'</div><div class="kpi-wms-lbl">Locais Utilizados</div></div></div>'+
     '<div class="kpi-wms-card"><div class="kpi-wms-icon '+ic+'">📈</div><div><div class="kpi-wms-val">'+pct+'%</div><div class="kpi-wms-lbl">Taxa de Ocupação</div></div></div>'+
-    '<div class="kpi-wms-card"><div class="kpi-wms-icon c-purple">🏷️</div><div><div class="kpi-wms-val">'+lotes.length+'</div><div class="kpi-wms-lbl">Lotes Ativos</div></div></div>'+
+    '<div class="kpi-wms-card"><div class="kpi-wms-icon c-purple">🏷️</div><div><div class="kpi-wms-val">'+lotesAtivos+'</div><div class="kpi-wms-lbl">Lotes Ativos</div></div></div>'+
     '<div class="kpi-wms-card"><div class="kpi-wms-icon c-green">🔄</div><div><div class="kpi-wms-val">'+mov+'</div><div class="kpi-wms-lbl">Movimentações Hoje</div></div></div>';
 }
 
