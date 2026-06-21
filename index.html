@@ -848,7 +848,7 @@ const {createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
 
 const RUAS=['V','U','T','S','R','Q','P','O','N','M','L','K','J','I','H','G','F','E','D','C','B','A'];
-const AVS_E=[1,2,3,4,5,6,7,8];
+const AVS_E=[0,1,2,3,4,5,6,7,8];
 const AVS_D=[9,10,11,12,13,14,15,16,17];
 const PRODS=['Linter','Fibrilha','Algodãozinho','Fibrilha Torre'];
 const PS={'Linter':{bg:'#185FA530',border:'#378ADD',text:'#85B7EB',dot:'#378ADD'},'Fibrilha':{bg:'#3B6D1130',border:'#639922',text:'#97C459',dot:'#639922'},'Algodãozinho':{bg:'#BA751730',border:'#BA7517',text:'#FAC775',dot:'#BA7517'},'Fibrilha Torre':{bg:'#534AB730',border:'#7F77DD',text:'#AFA9EC',dot:'#7F77DD'}};
@@ -1110,6 +1110,33 @@ function renderPanelBody(b,livre){
       if(n>livre)return toast(`Quantidade excede a capacidade disponível. Espaço restante: ${livre}.`,'err');
       btnE.disabled=true;
       try{
+        // ── CHECAGEM DE SEGURANÇA NO BANCO ──
+        // Antes de inserir, confirma diretamente no Supabase (não na lista em memória)
+        // se já existe um lote com este número neste bloco. Isso elimina a duplicação
+        // mesmo que o cache local (`ls`) esteja desatualizado por qualquer motivo
+        // (sessão antiga, outra pessoa cadastrando ao mesmo tempo, etc.).
+        const {data:checagem,error:eCheck}=await sb.from('lotes').select('*').eq('bloco_id',b.id).ilike('lote',lote).limit(1);
+        if(eCheck)throw eCheck;
+        const jaExisteNoBanco=checagem&&checagem.length?checagem[0]:null;
+        console.log('[ENTRADA][DEBUG] Checagem direta no banco antes do INSERT — lote já existe?',jaExisteNoBanco?'SIM, id='+jaExisteNoBanco.id+', fardos='+jaExisteNoBanco.fardos:'NÃO');
+
+        if(jaExisteNoBanco){
+          // O banco confirma que o lote já existe — trata como complementação (UPDATE), nunca duplica.
+          const novoTotal=jaExisteNoBanco.fardos+n;
+          const {error:eUpd}=await sb.from('lotes').update({fardos:novoTotal}).eq('id',jaExisteNoBanco.id);
+          if(eUpd)throw eUpd;
+          const {error:e2}=await sb.from('historico').insert({acao:'ENTRADA',subtipo:'COMPLEMENTO',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:jaExisteNoBanco.lote,produto:jaExisteNoBanco.produto,fardos:n,saldo_apos:novoTotal,numero_nf:nf,observacao:obs||'Complementação de lote existente',usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
+          if(e2)throw e2;
+          await sb.from('logs_operacoes').insert({operacao:'COMPLEMENTO',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:jaExisteNoBanco.lote,produto:jaExisteNoBanco.produto,fardos:n,status:'SUCESSO'});
+          try{
+            await sb.from('auditoria').insert({acao:'COMPLEMENTAÇÃO',tabela:'historico',registro_id:null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{lote:jaExisteNoBanco.lote,fardos:jaExisteNoBanco.fardos},dados_novos:{lote:jaExisteNoBanco.lote,fardos_adicionados:n,saldo_final:novoTotal},motivo:`Complementação (detectada na checagem de segurança) em Rua ${b.rua} / Avenida ${b.avenida}`});
+          }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar COMPLEMENTAÇÃO:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
+          await loadBlocos();await loadHistorico();
+          toast(`✅ Lote ${jaExisteNoBanco.lote} complementado! Saldo: ${novoTotal}/${b.capacidade}`);
+          actionTab='lotes';renderMapa();renderBlocoPanel();
+          return;
+        }
+
         const {error:e1}=await sb.from('lotes').insert({bloco_id:b.id,lote,produto:prod,fardos:n});
         if(e1)throw e1;
         const {error:e2}=await sb.from('historico').insert({acao:'ENTRADA',subtipo:'INICIAL',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,saldo_apos:n,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
