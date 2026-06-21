@@ -1269,7 +1269,7 @@ function renderHistKPI(){
 function renderHistList(){
   const el=document.getElementById('historico-list');
   const q=histSearch.toUpperCase();
-  const lista=historico.filter(h=>{const mq=!q||h.lote?.toUpperCase().includes(q)||h.produto?.toUpperCase().includes(q)||h.usuario_nome?.toUpperCase().includes(q)||String(h.rua||'').includes(q)||String(h.avenida||'').includes(q);return mq&&(!histFilter||h.acao===histFilter);});
+  const lista=historico.filter(h=>{const mq=!q||h.lote?.toUpperCase().includes(q)||h.produto?.toUpperCase().includes(q)||h.usuario_nome?.toUpperCase().includes(q)||String(h.rua??'').includes(q)||String(h.avenida??'').includes(q);return mq&&(!histFilter||h.acao===histFilter);});
   if(!lista.length){el.innerHTML=`<div class="empty-msg">Nenhum registro encontrado.</div>`;return;}
   el.innerHTML=lista.slice(0,200).map(h=>{
     const st=ps(h.produto);
@@ -1280,7 +1280,7 @@ function renderHistList(){
       <div class="htbl-c" data-label="Tipo"><span class="htbl-badge ${isIn?'b-in':'b-out'}">${isIn?'📥 Entrada':'📤 Saída'}</span></div>
       <div class="htbl-c htbl-lote-name" data-label="Lote">${h.lote}${isEdited}</div>
       <div class="htbl-c htbl-prod" data-label="Produto" style="color:${st.dot}">${h.produto||'—'}</div>
-      <div class="htbl-c htbl-local" data-label="Local">📍 Rua ${h.rua||'—'} · Av ${h.avenida||'—'}</div>
+      <div class="htbl-c htbl-local" data-label="Local">📍 Rua ${h.rua??'—'} · Av ${h.avenida??'—'}</div>
       <div class="htbl-c htbl-qty ${isIn?'q-in':'q-out'}" data-label="Quantidade">${isIn?'+':'-'}${h.fardos}</div>
       <div class="htbl-c htbl-user" data-label="Usuário">👤 ${h.usuario_nome}</div>
       <div class="htbl-c htbl-date" data-label="Data / Hora">${dt.toLocaleDateString('pt-BR')} · ${dt.toLocaleTimeString('pt-BR')}</div>
@@ -1765,8 +1765,8 @@ async function exportarExcel(){
         h.acao === 'ENTRADA' ? 'Entrada' : 'Saída',
         h.fardos,
         h.saldo_pos,
-        h.rua          || '',
-        h.avenida      || '',
+        h.rua          ?? '',
+        h.avenida      ?? '',
         h.numero_nf    || '',
         h.observacao   || '',
         h.usuario_nome || ''
@@ -2053,7 +2053,7 @@ function renderQualDashboard(){
       </div>
     </div>
     ${comAlerta.length?`<div class="sec-title" style="margin-bottom:8px;">⚠ Alertas de qualidade</div>
-    ${comAlerta.slice(0,4).map(q=>{const al=checkAlerta(q);return `<div class="alert-item"><div class="alert-lote">🧪 ${q.lote} — Rua ${q.rua||'—'} / Av ${q.avenida||'—'}</div>
+    ${comAlerta.slice(0,4).map(q=>{const al=checkAlerta(q);return `<div class="alert-item"><div class="alert-lote">🧪 ${q.lote} — Rua ${q.rua??'—'} / Av ${q.avenida??'—'}</div>
     <div>${al.map(a=>`<span class="ind-chip ind-warn">${a.campo}: ${a.val.toFixed(2)}% (${a.tipo==='max'?'máx':'mín'}: ${a.limite}%)</span>`).join('')}</div>
     <div style="font-size:10px;color:var(--muted);margin-top:4px;">${new Date(q.criado_em).toLocaleString('pt-BR')} · ${q.usuario_nome}</div></div>`;}).join('')}
     ${comAlerta.length>4?`<div style="font-size:12px;color:var(--muted);padding:4px 0;">+${comAlerta.length-4} outros alertas</div>`:''}`:''}
@@ -2074,7 +2074,7 @@ function renderQualDashboard(){
 function renderQualForm(){
   console.log('[QUALIDADE] Renderizando formulário Nova Análise...');
   const el=document.getElementById('qtab-form');
-  const lotesDisp=lotes.map(l=>{const b=blocos.find(x=>x.id===l.bloco_id);return{lote:l.lote,rua:b?.rua||'',av:String(b?.avenida||''),prod:l.produto,fardos:l.fardos};});
+  const lotesDisp=lotes.map(l=>{const b=blocos.find(x=>x.id===l.bloco_id);return{lote:l.lote,rua:b?.rua??'',av:String(b?.avenida??''),prod:l.produto,fardos:l.fardos};});
   el.innerHTML=`<div class="panel">
     <div class="panel-title" style="margin-bottom:14px;">Nova análise de qualidade</div>
     <div class="ff"><label>Lote</label>
@@ -2254,7 +2254,7 @@ async function buscarQualHist(){
       return `<div class="qual-row"><div class="qual-row-head">
         <div style="flex:1">
           <div style="font-size:14px;font-weight:700;">${q.lote||'—'}</div>
-          <div class="hist-meta">📍 Rua ${q.rua||'—'} · Av ${q.avenida||'—'} · ${q.produto||'—'}</div>
+          <div class="hist-meta">📍 Rua ${q.rua??'—'} · Av ${q.avenida??'—'} · ${q.produto??'—'}</div>
           <div class="hist-meta">📅 ${dt.toLocaleDateString('pt-BR')} 🕐 ${dt.toLocaleTimeString('pt-BR')}</div>
           <div class="hist-meta">👤 <strong>${q.usuario_nome||'—'}</strong></div>
         </div>
@@ -2353,7 +2353,7 @@ async function exportarQualExcel(){
       [`Emitido em: ${emissao}`,'','','','','','','','','','',''],
       ['','','','','','','','','','','',''],
       COLS,
-      ...data.map(q=>{const dt=new Date(q.criado_em);return[dt.toLocaleDateString('pt-BR'),dt.toLocaleTimeString('pt-BR'),q.lote||'',q.rua||'',q.avenida||'',q.produto||'',q.celulose!=null?parseFloat(q.celulose):null,q.umidade!=null?parseFloat(q.umidade):null,q.residuo_oleo!=null?parseFloat(q.residuo_oleo):null,q.impureza!=null?parseFloat(q.impureza):null,q.observacao||'',q.usuario_nome||''];})
+      ...data.map(q=>{const dt=new Date(q.criado_em);return[dt.toLocaleDateString('pt-BR'),dt.toLocaleTimeString('pt-BR'),q.lote||'',q.rua??'',q.avenida??'',q.produto??'',q.celulose!=null?parseFloat(q.celulose):null,q.umidade!=null?parseFloat(q.umidade):null,q.residuo_oleo!=null?parseFloat(q.residuo_oleo):null,q.impureza!=null?parseFloat(q.impureza):null,q.observacao||'',q.usuario_nome||''];})
     ];
     const ws=XLSX.utils.aoa_to_sheet(aoa);
     [0,1,2].forEach(r=>COLS.forEach((_,c)=>{const a=XLSX.utils.encode_cell({r,c});if(ws[a])ws[a].s=r===0?tSt:sSt;}));
