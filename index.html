@@ -2458,7 +2458,16 @@ async function salvarQualLimites(){
   const imp=parseFloat(document.getElementById('al-imp-max')?.value)||3;
   const btn=document.getElementById('btn-salvar-limites');if(btn)btn.disabled=true;
   try{
-    const ups=async(k,v)=>{const{error}=await sb.from('configuracoes').upsert({chave:k,valor:String(v)},{onConflict:'chave'});if(error)throw error;};
+    const ups=async(k,v)=>{
+      const {data:ex}=await sb.from('configuracoes').select('id').eq('chave',k).limit(1);
+      if(ex&&ex.length){
+        const {error}=await sb.from('configuracoes').update({valor:String(v)}).eq('chave',k);
+        if(error)throw error;
+      }else{
+        const {error}=await sb.from('configuracoes').insert({chave:k,valor:String(v)});
+        if(error)throw error;
+      }
+    };
     await ups('ql_celulose_min',cel);await ups('ql_umidade',um);await ups('ql_residuo_oleo',res);await ups('ql_impureza',imp);
     qualLimites={celulose_min:cel,umidade:um,residuo_oleo:res,impureza:imp};
     toast('✅ Limites de qualidade salvos!');
