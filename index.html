@@ -833,6 +833,25 @@
       <div class="ff" style="margin:0"><label>Impureza (%)</label><input id="qe-impureza" type="text" inputmode="decimal" class="hist-input" style="width:100%"></div>
     </div>
     <div class="ff"><label>Observação</label><textarea id="qe-obs" class="hist-input" style="width:100%;min-height:64px;resize:vertical"></textarea></div>
+    <div style="border-top:1px solid var(--border);margin:12px 0 10px;padding-top:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">📅 Período de Produção do Lote</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div class="ff" style="margin:0"><label>Data início produção</label><input id="qe-dt-ini" type="date" class="hist-input" style="width:100%"></div>
+        <div class="ff" style="margin:0"><label>Turno início</label>
+          <select id="qe-turno-ini" class="hist-input" style="width:100%">
+            <option value="">— Turno —</option>
+            <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option>
+          </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="ff" style="margin:0"><label>Data final produção</label><input id="qe-dt-fim" type="date" class="hist-input" style="width:100%"></div>
+        <div class="ff" style="margin:0"><label>Turno final</label>
+          <select id="qe-turno-fim" class="hist-input" style="width:100%">
+            <option value="">— Turno —</option>
+            <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option>
+          </select></div>
+      </div>
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-green btn-full" id="btn-save-qual-edit">Salvar</button>
       <button class="btn btn-ghost btn-full" id="btn-cancel-qual-edit">Cancelar</button>
@@ -929,8 +948,14 @@ async function salvarConfiguracoes(){
   if(btn)btn.disabled=true;
   try{
     const upsert=async(chave,valor)=>{
-      const {error}=await sb.from('configuracoes').upsert({chave,valor},{onConflict:'chave'});
-      if(error)throw error;
+      const {data:ex}=await sb.from('configuracoes').select('id').eq('chave',chave).limit(1);
+      if(ex&&ex.length){
+        const {error}=await sb.from('configuracoes').update({valor}).eq('chave',chave);
+        if(error)throw error;
+      }else{
+        const {error}=await sb.from('configuracoes').insert({chave,valor});
+        if(error)throw error;
+      }
     };
     await upsert('nome_empresa',nome);
     if(file){
@@ -2078,12 +2103,17 @@ function renderQualForm(){
   const lotesDisp=lotes.map(l=>{const b=blocos.find(x=>x.id===l.bloco_id);return{lote:l.lote,rua:b?.rua??'',av:String(b?.avenida??''),prod:l.produto,fardos:l.fardos};});
   el.innerHTML=`<div class="panel">
     <div class="panel-title" style="margin-bottom:14px;">Nova análise de qualidade</div>
-    <div class="ff"><label>Lote</label>
+
+    <div class="ff">
+      <label>Pesquisar Lote <small style="color:var(--muted);font-weight:400">(digite para filtrar)</small></label>
+      <input id="qf-lote-busca" type="text" class="hist-input" style="width:100%;margin-bottom:6px;"
+             placeholder="🔍 Digite o número do lote…" autocomplete="off"/>
       <select id="qf-lote" class="hist-input" style="width:100%">
-        <option value="">Selecione o lote…</option>
+        <option value="">— selecione após pesquisar —</option>
         ${lotesDisp.map(l=>`<option value="${l.lote}" data-rua="${l.rua}" data-av="${l.av}" data-prod="${l.prod}" data-fardos="${l.fardos}">${l.lote} — ${l.prod} (Rua ${l.rua} / Av ${l.av})</option>`).join('')}
       </select>
     </div>
+
     <div class="qual-loc-box"><div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Localização (preenchido automaticamente)</div>
       <div class="qual-loc-row">
         <div class="qual-loc-item"><span>Rua</span><span id="qf-rua-d">—</span></div>
@@ -2092,6 +2122,27 @@ function renderQualForm(){
         <div class="qual-loc-item"><span>Estoque</span><span id="qf-fardos-d" style="color:var(--text);">—</span></div>
       </div>
     </div>
+
+    <div style="border-bottom:1px solid var(--border);margin-bottom:14px;padding-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">📅 Período de Produção do Lote</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div class="ff" style="margin:0"><label>Data início produção</label><input id="qf-dt-ini" type="date" class="hist-input" style="width:100%"></div>
+        <div class="ff" style="margin:0"><label>Turno início</label>
+          <select id="qf-turno-ini" class="hist-input" style="width:100%">
+            <option value="">— Turno —</option>
+            <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option>
+          </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="ff" style="margin:0"><label>Data final produção</label><input id="qf-dt-fim" type="date" class="hist-input" style="width:100%"></div>
+        <div class="ff" style="margin:0"><label>Turno final</label>
+          <select id="qf-turno-fim" class="hist-input" style="width:100%">
+            <option value="">— Turno —</option>
+            <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option>
+          </select></div>
+      </div>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
       <div class="ff" style="margin:0"><label>Celulose (%)</label><input id="qf-celulose" type="text" inputmode="decimal" placeholder="ex: 85,5 ou 85.5" class="hist-input" style="width:100%"></div>
       <div class="ff" style="margin:0"><label>Umidade (%)</label><input id="qf-umidade" type="text" inputmode="decimal" placeholder="ex: 10,2 ou 10.2" class="hist-input" style="width:100%"></div>
@@ -2102,12 +2153,34 @@ function renderQualForm(){
     <div id="qf-alertas" style="display:none;margin-bottom:12px;"></div>
     <button class="btn btn-green btn-full" id="btn-salvar-analise">🔬 Salvar análise</button>
   </div>`;
-  document.getElementById('qf-lote').onchange=e=>{
+
+  // ── Busca dinâmica de lote: filtra as options do select conforme digitação
+  const buscaEl=document.getElementById('qf-lote-busca');
+  const selEl=document.getElementById('qf-lote');
+  buscaEl.addEventListener('input',()=>{
+    const q=buscaEl.value.trim().toLowerCase();
+    let visiveis=0;let ultimaOpt=null;
+    Array.from(selEl.options).forEach(opt=>{
+      if(!opt.value){opt.hidden=false;return;}
+      const match=!q||opt.text.toLowerCase().includes(q)||opt.value.toLowerCase().includes(q);
+      opt.hidden=!match;
+      if(match){visiveis++;ultimaOpt=opt;}
+    });
+    // Se só uma opção visível → selecionar automaticamente
+    if(visiveis===1&&ultimaOpt){
+      selEl.value=ultimaOpt.value;
+      selEl.dispatchEvent(new Event('change'));
+    }
+  });
+
+  selEl.onchange=e=>{
     const o=e.target.selectedOptions[0];
-    document.getElementById('qf-rua-d').textContent=o.dataset.rua||'—';
-    document.getElementById('qf-av-d').textContent=o.dataset.av||'—';
-    document.getElementById('qf-prod-d').textContent=o.dataset.prod||'—';
+    document.getElementById('qf-rua-d').textContent=o.dataset.rua??'—';
+    document.getElementById('qf-av-d').textContent=o.dataset.av??'—';
+    document.getElementById('qf-prod-d').textContent=o.dataset.prod??'—';
     document.getElementById('qf-fardos-d').textContent=o.dataset.fardos?o.dataset.fardos+' fardos':'—';
+    // Preenche o campo de busca com o lote selecionado (feedback visual)
+    if(o.value) buscaEl.value=o.value;
     atualizarAlertaForm();
   };
   ['qf-celulose','qf-umidade','qf-residuo','qf-impureza'].forEach(id=>document.getElementById(id)?.addEventListener('input',atualizarAlertaForm));
@@ -2146,7 +2219,7 @@ async function salvarAnalise(){
   if(!currentUser?.id){toast('Sessão inválida. Faça login novamente.','err');return;}
   const btn=document.getElementById('btn-salvar-analise');btn.disabled=true;
   try{
-    const rec={lote:loteEl.value,rua:o.dataset.rua||null,avenida:o.dataset.av||null,produto:o.dataset.prod||null,fardos_estoque:parseInt(o.dataset.fardos)||null,celulose:cel,umidade:um,residuo_oleo:res,impureza:imp,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,criado_em:new Date().toISOString()};
+    const rec={lote:loteEl.value,rua:o.dataset.rua||null,avenida:o.dataset.av||null,produto:o.dataset.prod||null,fardos_estoque:parseInt(o.dataset.fardos)||null,celulose:cel,umidade:um,residuo_oleo:res,impureza:imp,observacao:obs,data_inicio_producao:document.getElementById('qf-dt-ini').value||null,turno_inicio:document.getElementById('qf-turno-ini').value||null,data_final_producao:document.getElementById('qf-dt-fim').value||null,turno_final:document.getElementById('qf-turno-fim').value||null,usuario_nome:currentUser.nome,usuario_id:currentUser.id,criado_em:new Date().toISOString()};
     console.log('[QUALIDADE] Payload de inserção:',rec);
 
     // INSERT sem .single() — evita falha caso a leitura pós-insert seja bloqueada
@@ -2194,7 +2267,9 @@ async function salvarAnalise(){
     if(typeof renderQualDashboard==='function')renderQualDashboard();
 
     toast('✅ Análise registrada e confirmada no banco de dados!');
-    ['qf-lote','qf-celulose','qf-umidade','qf-residuo','qf-impureza','qf-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['qf-lote','qf-celulose','qf-umidade','qf-residuo','qf-impureza','qf-obs','qf-dt-ini','qf-dt-fim'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['qf-turno-ini','qf-turno-fim'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const buscaReset=document.getElementById('qf-lote-busca');if(buscaReset)buscaReset.value='';;
     ['qf-rua-d','qf-av-d','qf-prod-d','qf-fardos-d'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
     document.getElementById('qf-alertas').style.display='none';
     const al=checkAlerta(rec);if(al.length)toast(`⚠ Análise salva com ${al.length} alerta(s) de qualidade`,'err');
@@ -2258,9 +2333,10 @@ async function buscarQualHist(){
           <div class="hist-meta">📍 Rua ${q.rua??'—'} · Av ${q.avenida??'—'} · ${q.produto??'—'}</div>
           <div class="hist-meta">📅 ${dt.toLocaleDateString('pt-BR')} 🕐 ${dt.toLocaleTimeString('pt-BR')}</div>
           <div class="hist-meta">👤 <strong>${q.usuario_nome||'—'}</strong></div>
+          ${(q.data_inicio_producao||q.data_final_producao)?`<div class="hist-meta" style="margin-top:4px;color:var(--accent2);">🏭 Produção: ${q.data_inicio_producao?new Date(q.data_inicio_producao+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${q.turno_inicio?' ('+q.turno_inicio+')':''} → ${q.data_final_producao?new Date(q.data_final_producao+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${q.turno_final?' ('+q.turno_final+')':''}</div>`:''}
         </div>
         ${isAdmin()?`<div style="display:flex;gap:4px;flex-shrink:0;">
-          <button class="btn-edit" data-qid="${q.id}" data-cel="${q.celulose??''}" data-um="${q.umidade??''}" data-res="${q.residuo_oleo??''}" data-imp="${q.impureza??''}" data-obs="${(q.observacao||'').replace(/"/g,'&quot;')}">Editar</button>
+          <button class="btn-edit" data-qid="${q.id}" data-cel="${q.celulose??''}" data-um="${q.umidade??''}" data-res="${q.residuo_oleo??''}" data-imp="${q.impureza??''}" data-obs="${(q.observacao||'').replace(/"/g,'&quot;')}" data-dtini="${q.data_inicio_producao||''}" data-dtfim="${q.data_final_producao||''}" data-turnoi="${q.turno_inicio||''}" data-turnof="${q.turno_final||''}">Editar</button>
           <button class="btn-delete" data-qid="${q.id}" data-lote="${q.lote}">Excluir</button>
         </div>`:''}
       </div>
@@ -2281,6 +2357,10 @@ function openQualEditModal(ds){
   document.getElementById('qe-residuo').value=ds.res||'';
   document.getElementById('qe-impureza').value=ds.imp||'';
   document.getElementById('qe-obs').value=ds.obs||'';
+  document.getElementById('qe-dt-ini').value=ds.dtini||'';
+  document.getElementById('qe-dt-fim').value=ds.dtfim||'';
+  document.getElementById('qe-turno-ini').value=ds.turnoi||'';
+  document.getElementById('qe-turno-fim').value=ds.turnof||'';
   document.getElementById('modal-qual-edit').classList.add('show');
 }
 document.getElementById('btn-save-qual-edit').onclick=async()=>{
@@ -2289,7 +2369,7 @@ document.getElementById('btn-save-qual-edit').onclick=async()=>{
   try{
     const antigo=qualidade.find(x=>String(x.id)===String(qualEditId));
     // parseNumBR converte vírgula decimal corretamente e preserva valor 0
-    const patch={celulose:parseNumBR(document.getElementById('qe-celulose').value),umidade:parseNumBR(document.getElementById('qe-umidade').value),residuo_oleo:parseNumBR(document.getElementById('qe-residuo').value),impureza:parseNumBR(document.getElementById('qe-impureza').value),observacao:document.getElementById('qe-obs').value.trim()||null,editado_em:new Date().toISOString()};
+    const patch={celulose:parseNumBR(document.getElementById('qe-celulose').value),umidade:parseNumBR(document.getElementById('qe-umidade').value),residuo_oleo:parseNumBR(document.getElementById('qe-residuo').value),impureza:parseNumBR(document.getElementById('qe-impureza').value),observacao:document.getElementById('qe-obs').value.trim()||null,data_inicio_producao:document.getElementById('qe-dt-ini').value||null,turno_inicio:document.getElementById('qe-turno-ini').value||null,data_final_producao:document.getElementById('qe-dt-fim').value||null,turno_final:document.getElementById('qe-turno-fim').value||null,editado_em:new Date().toISOString()};
     console.log('[QUALIDADE] Editando análise',qualEditId,'payload:',patch);
     const {error}=await sb.from('qualidade_linter').update(patch).eq('id',qualEditId);
     if(error){
