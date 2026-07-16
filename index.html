@@ -840,7 +840,7 @@
         <div class="ff" style="margin:0"><label>Turno início</label>
           <select id="qe-turno-ini" class="hist-input" style="width:100%">
             <option value="">— Turno —</option>
-            <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option>
+            <option value="A">Turno A</option><option value="B">Turno B</option><option value="C">Turno C</option>
           </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -848,7 +848,7 @@
         <div class="ff" style="margin:0"><label>Turno final</label>
           <select id="qe-turno-fim" class="hist-input" style="width:100%">
             <option value="">— Turno —</option>
-            <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option>
+            <option value="A">Turno A</option><option value="B">Turno B</option><option value="C">Turno C</option>
           </select></div>
       </div>
     </div>
@@ -995,7 +995,7 @@ async function doLogin(){
     document.getElementById('topbar-role').textContent=data.role==='admin'?'Administrador':'Operador';
     if(!isAdmin()){document.getElementById('nav-audit').classList.add('hidden-nav');document.getElementById('nav-admin').classList.add('hidden-nav');}
     // Registro de login na auditoria — não bloqueante: nunca interfere no fluxo de login
-    sb.from('auditoria').insert({acao:'LOGIN',tabela:'usuarios',registro_id:data.id,usuario_id:data.id,usuario_nome:data.nome,dados_antigos:null,dados_novos:null,motivo:'Login realizado com sucesso'}).then(({error})=>{if(error)console.error('[AUDITORIA][DEBUG] Falha ao registrar LOGIN:',{message:error.message,code:error.code,details:error.details,hint:error.hint});else console.log('[AUDITORIA][DEBUG] LOGIN registrado com sucesso.');}).catch(e=>console.error('[AUDITORIA][DEBUG] Erro inesperado ao registrar LOGIN:',e));
+    sb.from('auditoria').insert({acao:'LOGIN',tabela:'usuarios',registro_id:null,usuario_id:data.id,usuario_nome:data.nome,dados_antigos:null,dados_novos:null,motivo:'Login realizado com sucesso'}).then(({error})=>{if(error)console.error('[AUDITORIA][DEBUG] Falha ao registrar LOGIN:',{message:error.message,code:error.code,details:error.details,hint:error.hint});else console.log('[AUDITORIA][DEBUG] LOGIN registrado com sucesso.');}).catch(e=>console.error('[AUDITORIA][DEBUG] Erro inesperado ao registrar LOGIN:',e));
     await loadAll();showTab('mapa');
   }catch{err.textContent='Erro de conexão.';err.classList.remove('hidden');}
   finally{document.getElementById('btn-login').disabled=false;document.getElementById('btn-login').textContent='Entrar';}
@@ -1039,7 +1039,7 @@ function renderPanelBody(b,livre){
 
   if(actionTab==='lotes'){
     if(!ls.length){body.innerHTML=`<div class="empty-msg">Bloco vazio.</div>`;return;}
-    body.innerHTML=ls.map(l=>{const st=ps(l.produto);const lastQ=qualidade.find(q=>q.lote===l.lote);const qChips=lastQ?renderQualIndicadores(lastQ):'<span class="ind-chip ind-na">Sem análise</span>';const qDate=lastQ?`<div class="hist-meta" style="margin-top:2px;">🔬 ${new Date(lastQ.criado_em).toLocaleDateString('pt-BR')}</div>`:'';return `<div class="lote-row" style="border-left:4px solid ${st.dot}"><div style="flex:1"><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div><div class="indicator-row">${qChips}</div>${qDate}</div><div class="lote-qty">${l.fardos}</div></div>`}).join('');
+    body.innerHTML=ls.map(l=>{const st=ps(l.produto);const lastQ=qualidade.find(q=>q.lote===l.lote);const qChips=lastQ?renderQualIndicadores(lastQ):'<span class="ind-chip ind-na">Sem análise</span>';const qDate=lastQ?`<div class="hist-meta" style="margin-top:4px;">🔬 Análise: ${new Date(lastQ.criado_em).toLocaleDateString('pt-BR')}</div>`:'';const qProd=lastQ&&(lastQ.data_inicio_producao||lastQ.data_final_producao)?`<div class="hist-meta" style="margin-top:2px;color:var(--accent2);">🏭 Produção: ${lastQ.data_inicio_producao?new Date(lastQ.data_inicio_producao+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${lastQ.turno_inicio?' T'+lastQ.turno_inicio:''}  →  ${lastQ.data_final_producao?new Date(lastQ.data_final_producao+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${lastQ.turno_final?' T'+lastQ.turno_final:''}</div>`:'';return `<div class="lote-row" style="border-left:4px solid ${st.dot}"><div style="flex:1"><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div><div class="indicator-row">${qChips}</div>${qDate}${qProd}</div><div class="lote-qty">${l.fardos}</div></div>`}).join('');
     return;
   }
 
@@ -1116,7 +1116,7 @@ function renderPanelBody(b,livre){
           await sb.from('logs_operacoes').insert({operacao:'COMPLEMENTO',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:existente.lote,produto:existente.produto,fardos:n,status:'SUCESSO'});
           // Registro de auditoria — não bloqueante: a complementação já foi concluída com sucesso acima
           try{
-            await sb.from('auditoria').insert({acao:'COMPLEMENTAÇÃO',tabela:'historico',registro_id:null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{lote:existente.lote,rua:b.rua,avenida:b.avenida,fardos:existente.fardos},dados_novos:{lote:existente.lote,rua:b.rua,avenida:b.avenida,fardos_adicionados:n,saldo_final:novoTotal},motivo:`Complementação de lote em Rua ${b.rua} / Avenida ${b.avenida}`});
+            await sb.from('auditoria').insert({acao:'COMPLEMENTAÇÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{lote:existente.lote,rua:b.rua,avenida:b.avenida,fardos:existente.fardos},dados_novos:{lote:existente.lote,rua:b.rua,avenida:b.avenida,fardos_adicionados:n,saldo_final:novoTotal},motivo:`Complementação de lote em Rua ${b.rua} / Avenida ${b.avenida}`});
           }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar COMPLEMENTAÇÃO:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
           await loadBlocos();await loadHistorico();
           toast(`✅ Lote ${existente.lote} complementado! Saldo: ${novoTotal}/${b.capacidade}`);
@@ -1155,7 +1155,7 @@ function renderPanelBody(b,livre){
           if(e2)throw e2;
           await sb.from('logs_operacoes').insert({operacao:'COMPLEMENTO',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:jaExisteNoBanco.lote,produto:jaExisteNoBanco.produto,fardos:n,status:'SUCESSO'});
           try{
-            await sb.from('auditoria').insert({acao:'COMPLEMENTAÇÃO',tabela:'historico',registro_id:null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{lote:jaExisteNoBanco.lote,fardos:jaExisteNoBanco.fardos},dados_novos:{lote:jaExisteNoBanco.lote,fardos_adicionados:n,saldo_final:novoTotal},motivo:`Complementação (detectada na checagem de segurança) em Rua ${b.rua} / Avenida ${b.avenida}`});
+            await sb.from('auditoria').insert({acao:'COMPLEMENTAÇÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{lote:jaExisteNoBanco.lote,fardos:jaExisteNoBanco.fardos},dados_novos:{lote:jaExisteNoBanco.lote,fardos_adicionados:n,saldo_final:novoTotal},motivo:`Complementação (detectada na checagem de segurança) em Rua ${b.rua} / Avenida ${b.avenida}`});
           }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar COMPLEMENTAÇÃO:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
           await loadBlocos();await loadHistorico();
           toast(`✅ Lote ${jaExisteNoBanco.lote} complementado! Saldo: ${novoTotal}/${b.capacidade}`);
@@ -1170,7 +1170,7 @@ function renderPanelBody(b,livre){
         await sb.from('logs_operacoes').insert({operacao:'ENTRADA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote,produto:prod,fardos:n,status:'SUCESSO'});
         // Registro de auditoria — não bloqueante: a entrada já foi concluída com sucesso acima
         try{
-          await sb.from('auditoria').insert({acao:'ENTRADA',tabela:'historico',registro_id:null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:{lote,rua:b.rua,avenida:b.avenida,produto:prod,fardos:n},motivo:`Entrada inicial em Rua ${b.rua} / Avenida ${b.avenida}`});
+          await sb.from('auditoria').insert({acao:'ENTRADA',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:{lote,rua:b.rua,avenida:b.avenida,produto:prod,fardos:n},motivo:`Entrada inicial em Rua ${b.rua} / Avenida ${b.avenida}`});
         }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar ENTRADA:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
         await loadBlocos();await loadHistorico();
         toast(`✅ ${n} fardos de ${lote} registrados!`);
@@ -1205,7 +1205,7 @@ function renderPanelBody(b,livre){
           await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});
           // Registro de auditoria — não bloqueante: a saída já foi concluída com sucesso acima
           try{
-            await sb.from('auditoria').insert({acao:'SAÍDA',tabela:'historico',registro_id:null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{lote:selObj.lote,rua:b.rua,avenida:b.avenida,fardos:selObj.fardos},dados_novos:{lote:selObj.lote,rua:b.rua,avenida:b.avenida,fardos_retirados:n,saldo_final:saldoFinal},motivo:`Saída em Rua ${b.rua} / Avenida ${b.avenida}`});
+            await sb.from('auditoria').insert({acao:'SAÍDA',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{lote:selObj.lote,rua:b.rua,avenida:b.avenida,fardos:selObj.fardos},dados_novos:{lote:selObj.lote,rua:b.rua,avenida:b.avenida,fardos_retirados:n,saldo_final:saldoFinal},motivo:`Saída em Rua ${b.rua} / Avenida ${b.avenida}`});
           }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar SAÍDA:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
           await loadBlocos();await loadHistorico();
           toast(`✅ Saída de ${n} fardos registrada!`);
@@ -1484,7 +1484,7 @@ async function restaurarRegistro(auditId){
     delete payload.id; // deixa o banco gerar novo ID
     const {data:novo,error}=await sb.from(a.tabela).insert(payload).select();
     if(error)throw error;
-    await sb.from('auditoria').insert({acao:'RESTAURAÇÃO',tabela:a.tabela,registro_id:novo?.[0]?.id||null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:payload,motivo:`Restauração do registro excluído (auditoria #${auditId})`});
+    await sb.from('auditoria').insert({acao:'RESTAURAÇÃO',tabela:a.tabela,registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:payload,motivo:`Restauração do registro excluído (auditoria #${auditId})`});
     // Recarrega os dados da tabela afetada
     if(a.tabela==='historico')await loadHistorico();
     if(a.tabela==='qualidade_linter')await loadQualidade();
@@ -1524,7 +1524,7 @@ async function saveEditHandler(){
     const {error}=await sb.from('historico').update({observacao:obs,numero_nf:nf,editado_em:new Date().toISOString()}).eq('id',editingId);
     if(error){toast('Erro: '+error.message,'err');return;}
     if(antigo){
-      await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'historico',registro_id:editingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{observacao:antigo.observacao,numero_nf:antigo.numero_nf},dados_novos:{observacao:obs,numero_nf:nf},motivo:null});
+      await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{observacao:antigo.observacao,numero_nf:antigo.numero_nf},dados_novos:{observacao:obs,numero_nf:nf},motivo:null});
     }
     await loadHistorico();await loadAuditoria();
     toast('✅ Movimentação editada e registrada na auditoria!');
@@ -1558,7 +1558,7 @@ document.getElementById('btn-confirm-delete').onclick=async()=>{
     }else if(h.acao==='ENTRADA'){
       if(lote){const novo=lote.fardos-h.fardos;if(novo>0){await sb.from('lotes').update({fardos:novo}).eq('id',lote.id);}else{await sb.from('lotes').delete().eq('id',lote.id);}}
     }
-    await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'historico',registro_id:deletingId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:dados,dados_novos:null,motivo});
+    await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:dados,dados_novos:null,motivo});
     await loadBlocos();await loadHistorico();await loadAuditoria();
     toast('✅ Movimentação excluída e estoque ajustado!');
     document.getElementById('modal-delete').classList.remove('show');
@@ -1585,7 +1585,7 @@ document.getElementById('btn-save-user').onclick=async()=>{
     if(senha)upd.senha=senha;
     const {error}=await sb.from('usuarios').update(upd).eq('id',editUserId);
     if(error)throw error;
-    await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'usuarios',registro_id:editUserId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:antigo?{nome:antigo.nome,login:antigo.login,role:antigo.role}:null,dados_novos:{nome,login,role},motivo:null});
+    await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'usuarios',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:antigo?{nome:antigo.nome,login:antigo.login,role:antigo.role}:null,dados_novos:{nome,login,role},motivo:null});
     await loadUsuarios();
     toast('✅ Usuário atualizado!');
     document.getElementById('modal-edit-user').classList.remove('show');
@@ -1603,7 +1603,7 @@ async function delUser(id){
     const antigo=usuarios.find(u=>String(u.id)===String(id));
     const {error}=await sb.from('usuarios').delete().eq('id',id);
     if(error){toast('Erro: '+error.message,'err');console.error(error);return;}
-    await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'usuarios',registro_id:id,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:antigo||null,dados_novos:null,motivo:'Exclusão de usuário pelo administrador'});
+    await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'usuarios',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:antigo||null,dados_novos:null,motivo:'Exclusão de usuário pelo administrador'});
     await loadUsuarios();
     toast('✅ Usuário excluído!');
     renderAdmin();
@@ -2130,7 +2130,7 @@ function renderQualForm(){
         <div class="ff" style="margin:0"><label>Turno início</label>
           <select id="qf-turno-ini" class="hist-input" style="width:100%">
             <option value="">— Turno —</option>
-            <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option>
+            <option value="A">Turno A</option><option value="B">Turno B</option><option value="C">Turno C</option>
           </select></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -2138,7 +2138,7 @@ function renderQualForm(){
         <div class="ff" style="margin:0"><label>Turno final</label>
           <select id="qf-turno-fim" class="hist-input" style="width:100%">
             <option value="">— Turno —</option>
-            <option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option>
+            <option value="A">Turno A</option><option value="B">Turno B</option><option value="C">Turno C</option>
           </select></div>
       </div>
     </div>
@@ -2255,7 +2255,7 @@ async function salvarAnalise(){
 
     // Auditoria — não bloqueia o fluxo principal se falhar
     try{
-      await sb.from('auditoria').insert({acao:'INCLUSÃO',tabela:'qualidade_linter',registro_id:saved.id||null,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:rec,motivo:null});
+      await sb.from('auditoria').insert({acao:'INCLUSÃO',tabela:'qualidade_linter',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:null,dados_novos:rec,motivo:null});
     }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar INCLUSÃO de qualidade:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
 
     await loadQualidade();
@@ -2379,7 +2379,7 @@ document.getElementById('btn-save-qual-edit').onclick=async()=>{
     }
     if(antigo){
       try{
-        await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'qualidade_linter',registro_id:qualEditId,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:{celulose:antigo.celulose,umidade:antigo.umidade,residuo_oleo:antigo.residuo_oleo,impureza:antigo.impureza,observacao:antigo.observacao},dados_novos:patch,motivo:null});
+        await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'qualidade_linter',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{celulose:antigo.celulose,umidade:antigo.umidade,residuo_oleo:antigo.residuo_oleo,impureza:antigo.impureza,observacao:antigo.observacao},dados_novos:patch,motivo:null});
       }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar EDIÇÃO de qualidade:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
     }
     await loadQualidade();
@@ -2403,7 +2403,7 @@ async function excluirAnalise(id,lote){
     const {error}=await sb.from('qualidade_linter').delete().eq('id',id);
     if(error)throw error;
     try{
-      await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'qualidade_linter',registro_id:id,usuario_id:currentUser.id,usuario_nome:currentUser.nome,dados_antigos:antigo||null,dados_novos:null,motivo:'Exclusão pelo administrador'});
+      await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'qualidade_linter',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:antigo||null,dados_novos:null,motivo:'Exclusão pelo administrador'});
     }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar EXCLUSÃO de qualidade:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
     await loadQualidade();toast('✅ Análise excluída!');buscarQualHist();
   }catch(e){toast('Erro: '+e.message,'err');}
