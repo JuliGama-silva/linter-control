@@ -1,0 +1,43 @@
+{
+  "name": "Linter Control WMS",
+  "short_name": "Linter Control",
+  "description": "Sistema de Gestão de Fardos — DUAL Agroindustrial",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B1220",
+  "theme_color": "#D4950A",
+  "lang": "pt-BR",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mapa do Armazém",
+      "short_name": "Mapa",
+      "description": "Abrir o mapa de estoque",
+      "url": "/?tab=mapa",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nova Entrada",
+      "short_name": "Entrada",
+      "description": "Registrar entrada de estoque",
+      "url": "/?tab=mapa",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
