@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <title>Linter Control</title>
+  <meta name="description" content="Sistema WMS de Gestão de Fardos — DUAL Agroindustrial"/>
+  <meta name="theme-color" content="#D4950A"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <link rel="apple-touch-icon" href="/icons/icon-192.png"/>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23BA7517'/><text x='50' y='68' font-size='56' text-anchor='middle'>🌾</text></svg>"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -538,6 +543,52 @@
       #tab-historico .htbl-qty{font-size:24px;}
     }
 
+  
+    /* ═══ PWA / PRINT ═══════════════════════════════════════ */
+    .online-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px;cursor:default;}
+    .online-badge.online{background:rgba(74,222,128,.15);color:#4ADE80;border:1px solid rgba(74,222,128,.35);}
+    .online-badge.offline{background:rgba(252,165,165,.15);color:#FCA5A5;border:1px solid rgba(252,165,165,.35);animation:pulse-red 2s infinite;}
+    @keyframes pulse-red{0%,100%{opacity:1;}50%{opacity:.65;}}
+    #offline-banner{display:none;background:#7F1D1D;color:#FEE2E2;padding:8px 16px;font-size:12px;font-weight:600;align-items:center;gap:10px;justify-content:center;flex-shrink:0;}
+    #sync-pending-badge{display:none;background:rgba(212,149,10,.25);color:var(--accent2);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;}
+    #btn-install-pwa{display:none;background:var(--card);border:1px solid var(--border);color:var(--accent2);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:border-color .15s;}
+    #btn-install-pwa:hover{border-color:var(--accent);}
+    .btn-print-map{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s,color .15s;}
+    .btn-print-map:hover{border-color:var(--accent2);color:var(--accent2);}
+    .sync-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:none;}
+    .sync-panel.show{display:block;}
+    /* ─── IMPRESSÃO (PDF do mapa) ─── */
+    @media print {
+      @page { size: A3 landscape; margin: 8mm; }
+      *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+      #app-sidebar,
+      .topbar,
+      #dash-kpi-row,
+      .leg-occ,
+      #bloco-panel,
+      .drawer-backdrop,
+      #sidebar-overlay,
+      #offline-banner,
+      .btn-print-map,
+      .sec-header p { display: none !important; }
+      #app-screen{display:block !important;height:auto !important;overflow:visible !important;}
+      .main-area{display:block !important;height:auto !important;overflow:visible !important;}
+      .content{overflow:visible !important;padding:0 !important;max-width:none !important;}
+      #tab-mapa,#tab-estoque,#tab-historico,#tab-local,#tab-qualidade,#tab-auditoria,#tab-admin{display:none !important;}
+      #tab-mapa{display:block !important;}
+      .map-wrap{overflow:visible !important;border:none !important;background:transparent !important;box-shadow:none !important;padding:4px !important;}
+      .map-inner{min-width:unset !important;}
+      .legend{display:flex !important;flex-wrap:wrap !important;gap:12px !important;margin-bottom:8px !important;font-size:11px !important;}
+      .sec-header h2{font-size:16px !important;margin-bottom:6px !important;}
+      .cell{width:55px !important;height:60px !important;border-radius:4px !important;break-inside:avoid !important;}
+      .cell-qty{font-size:9px !important;}
+      .cell-lote{font-size:8px !important;}
+      .rua-lbl,.av-num{font-size:8px !important;}
+      .inicio-bar{font-size:9px !important;letter-spacing:2px !important;}
+      .occ-bar{height:4px !important;}
+      body::before{content:'Linter Control — Mapa do Armazém — ' attr(data-print-date);display:block;font-size:10px;color:#666;margin-bottom:6px;}
+    }
+
   </style>
 </head>
 <body>
@@ -558,6 +609,10 @@
 
 <div id="app-screen" class="hidden">
   <div id="sidebar-overlay"></div>
+  <div id="offline-banner">
+    🔴 Modo Offline — Os dados serão sincronizados automaticamente quando a conexão retornar.
+    <button onclick="syncWithSupabase()" style="margin-left:10px;background:#FCA5A5;color:#7F1D1D;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">↺ Sincronizar agora</button>
+  </div>
   <div id="drawer-backdrop"></div>
 
   <!-- ═══ SIDEBAR ═══ -->
@@ -591,6 +646,9 @@
         <span class="topbar-page-title" id="topbar-page-title">Mapa do Armazém</span>
       </div>
       <div class="topbar-right">
+        <span id="online-indicator" class="online-badge online" title="Status da conexão">🟢 Online</span>
+        <span id="sync-pending-badge">0 pendente(s)</span>
+        <button id="btn-install-pwa" title="Instalar como aplicativo">📲 Instalar</button>
         <div class="topbar-datetime"><span id="topbar-date"></span><span id="topbar-time"></span></div>
         <div class="topbar-user-block">
           <div class="topbar-avatar" id="topbar-avatar">?</div>
@@ -604,6 +662,10 @@
       <div id="tab-mapa">
         <div id="dash-kpi-row"></div>
       <div class="sec-header"><h2>Mapa do armazém</h2><p>Toque num bloco para gerenciar</p></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);">📦 Visão geral da ocupação dos blocos</div>
+        <button class="btn-print-map" onclick="imprimirMapa()" title="Exportar mapa como PDF (Ctrl+P)">🖨️ Exportar Mapa PDF</button>
+      </div>
       <div class="legend">
         <div class="leg-item"><div class="leg-dot" style="background:#378ADD"></div>Linter</div>
         <div class="leg-item"><div class="leg-dot" style="background:#639922"></div>Fibrilha</div>
@@ -910,9 +972,41 @@ const findB=(rua,av)=>blocos.find(b=>b.rua===rua&&b.avenida===av);
 const isAdmin=()=>currentUser?.role==='admin';
 
 async function loadAll(){await Promise.all([loadBlocos(),loadHistorico(),loadUsuarios(),loadAuditoria(),loadConfiguracoes(),loadQualidade()]);}
-async function loadBlocos(){const {data:bd}=await sb.from('blocos').select('*').order('id');const {data:ld}=await sb.from('lotes').select('*').order('entrada_em');blocos=bd||[];lotes=ld||[];}
-async function loadHistorico(){const {data}=await sb.from('historico').select('*').order('quando',{ascending:false}).limit(300);historico=data||[];}
-async function loadUsuarios(){if(!isAdmin())return;const {data}=await sb.from('usuarios').select('*').order('nome');usuarios=data||[];}
+async function loadBlocos(){
+  try{
+    const{data:bd}=await sb.from('blocos').select('*').order('id');
+    const{data:ld}=await sb.from('lotes').select('*').order('entrada_em');
+    blocos=bd||[];lotes=ld||[];
+    idbSave('idb_blocos',blocos).catch(()=>{});
+    idbSave('idb_lotes',lotes).catch(()=>{});
+  }catch(e){
+    console.warn('[OFFLINE] loadBlocos: fallback para IndexedDB.',e.message);
+    blocos=await idbGetAll('idb_blocos').catch(()=>[]);
+    lotes=await idbGetAll('idb_lotes').catch(()=>[]);
+  }
+}
+async function loadHistorico(){
+  try{
+    const{data}=await sb.from('historico').select('*').order('quando',{ascending:false}).limit(300);
+    historico=data||[];
+    idbSave('idb_historico',historico).catch(()=>{});
+  }catch(e){
+    console.warn('[OFFLINE] loadHistorico: fallback para IndexedDB.',e.message);
+    historico=await idbGetAll('idb_historico').catch(()=>[]);
+    historico.sort((a,b)=>new Date(b.quando)-new Date(a.quando));
+  }
+}
+async function loadUsuarios(){
+  if(!isAdmin())return;
+  try{
+    const{data}=await sb.from('usuarios').select('*').order('nome');
+    usuarios=data||[];
+    idbSave('idb_usuarios',usuarios).catch(()=>{});
+  }catch(e){
+    console.warn('[OFFLINE] loadUsuarios: fallback para IndexedDB.',e.message);
+    usuarios=await idbGetAll('idb_usuarios').catch(()=>[]);
+  }
+}
 async function loadAuditoria(){
   console.log('[AUDITORIA][DEBUG] Consultando tabela auditoria...');
   const {data,error}=await sb.from('auditoria').select('*').order('criado_em',{ascending:false}).limit(200);
@@ -1929,17 +2023,19 @@ async function exportarExcel(){
 async function loadQualidade(){
   console.log('[QUALIDADE] Iniciando carga de dados...');
   try{
-    console.log('[QUALIDADE] Consultando Supabase – tabela qualidade_linter...');
-    const {data,error}=await sb.from('qualidade_linter').select('*').order('criado_em',{ascending:false}).limit(500);
+    const{data,error}=await sb.from('qualidade_linter').select('*').order('criado_em',{ascending:false}).limit(500);
     if(error){
-      console.error('[QUALIDADE] Erro Supabase ao consultar:',{message:error.message,code:error.code,details:error.details,hint:error.hint});
-      qualidade=[];
-      if(error.code==='42P01')toast('⚠ Tabela de qualidade não existe no banco. Veja o console para o SQL necessário.','err');
+      console.error('[QUALIDADE] Erro:',error.message);
+      qualidade=await idbGetAll('idb_qualidade').catch(()=>[]);
     }else{
       qualidade=data||[];
-      console.log('[QUALIDADE] Registros carregados com sucesso:',qualidade.length);
+      console.log('[QUALIDADE] Registros:',qualidade.length);
+      idbSave('idb_qualidade',qualidade).catch(()=>{});
     }
-  }catch(e){console.error('[QUALIDADE] Erro inesperado:',e);qualidade=[];}
+  }catch(e){
+    console.warn('[OFFLINE] loadQualidade: fallback para IndexedDB.',e.message);
+    qualidade=await idbGetAll('idb_qualidade').catch(()=>[]);
+  }
 }
 
 /* ── Helpers de alerta e indicadores ── */
@@ -2564,6 +2660,246 @@ renderMapa=function(){
     if(av)av.textContent=(currentUser.nome||'?')[0].toUpperCase();
   }
 };
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   MÓDULO PWA — IndexedDB · Offline · Sync · Install · Print
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── IndexedDB: banco local ──────────────────────────────────── */
+const IDB_NAME='linter_control',IDB_VER=1;
+let _idb=null;
+
+function idbOpen(){
+  if(_idb)return Promise.resolve(_idb);
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(IDB_NAME,IDB_VER);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      ['idb_blocos','idb_lotes','idb_historico','idb_qualidade','idb_usuarios'].forEach(s=>{
+        if(!db.objectStoreNames.contains(s))db.createObjectStore(s,{keyPath:'id'});
+      });
+      if(!db.objectStoreNames.contains('idb_sync_queue'))
+        db.createObjectStore('idb_sync_queue',{keyPath:'q_id',autoIncrement:true});
+    };
+    req.onsuccess=e=>{_idb=e.target.result;res(_idb);};
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+
+async function idbSave(store,records){
+  try{
+    const db=await idbOpen();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction(store,'readwrite');
+      const s=tx.objectStore(store);
+      s.clear();
+      (records||[]).forEach(r=>{try{s.put(r);}catch{}});
+      tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);
+    });
+  }catch(e){console.warn('[IDB] Erro ao salvar em',store,e.message);}
+}
+
+async function idbGetAll(store){
+  try{
+    const db=await idbOpen();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction(store,'readonly');
+      const req=tx.objectStore(store).getAll();
+      req.onsuccess=e=>res(e.target.result||[]);
+      req.onerror=e=>rej(e.target.error);
+    });
+  }catch(e){console.warn('[IDB] Erro ao ler',store,e.message);return[];}
+}
+
+async function idbQueueOp(op){
+  try{
+    const db=await idbOpen();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction('idb_sync_queue','readwrite');
+      tx.objectStore('idb_sync_queue').add({...op,ts:Date.now(),synced:false});
+      tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);
+    });
+    updatePendingBadge();
+    console.log('[IDB] Operação enfileirada:',op.op_type,'em',op.table_name);
+  }catch(e){console.error('[IDB] Erro ao enfileirar operação:',e.message);}
+}
+
+async function idbGetPending(){
+  try{
+    const all=await idbGetAll('idb_sync_queue');
+    return all.filter(op=>!op.synced);
+  }catch{return[];}
+}
+
+async function idbMarkSynced(q_id){
+  try{
+    const db=await idbOpen();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction('idb_sync_queue','readwrite');
+      const s=tx.objectStore('idb_sync_queue');
+      const req=s.get(q_id);
+      req.onsuccess=e=>{const op=e.target.result;if(op){op.synced=true;s.put(op);}};
+      tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);
+    });
+  }catch(e){console.warn('[IDB] Erro ao marcar como sincronizado:',e.message);}
+}
+
+/* ─── Online / Offline indicator ──────────────────────────────── */
+function updateOnlineStatus(){
+  const online=navigator.onLine;
+  const ind=document.getElementById('online-indicator');
+  const banner=document.getElementById('offline-banner');
+  if(ind){
+    ind.className='online-badge '+(online?'online':'offline');
+    ind.textContent=online?'🟢 Online':'🔴 Offline';
+    ind.title=online?'Conectado ao Supabase':'Sem conexão — dados do cache local';
+  }
+  if(banner)banner.style.display=online?'none':'flex';
+  console.log('[REDE]',online?'Online':'Offline');
+}
+
+window.addEventListener('online',()=>{
+  updateOnlineStatus();
+  // Aguarda 2s para conexão estabilizar, depois sincroniza
+  setTimeout(()=>{
+    toast('🟢 Conexão restaurada! Sincronizando...');
+    syncWithSupabase();
+  },2000);
+});
+window.addEventListener('offline',()=>{
+  updateOnlineStatus();
+  toast('🔴 Sem conexão. O app continua funcionando com os dados locais.','err');
+});
+
+/* ─── Sincronização: IDB → Supabase ──────────────────────────── */
+let _syncInProgress=false;
+
+async function syncWithSupabase(){
+  if(_syncInProgress||!navigator.onLine)return;
+  _syncInProgress=true;
+  const ops=await idbGetPending();
+  if(!ops.length){
+    _syncInProgress=false;
+    // Recarrega dados frescos do servidor
+    await loadAll().catch(()=>{});
+    if(typeof renderMapa!=='undefined')renderMapa();
+    return;
+  }
+
+  console.log(`[SYNC] ${ops.length} operação(ões) pendentes para sincronizar.`);
+  let ok=0,fail=0;
+
+  for(const op of ops){
+    try{
+      switch(op.op_type){
+        case 'INSERT':{const{error}=await sb.from(op.table_name).insert(op.payload);if(error)throw error;break;}
+        case 'UPDATE':{const{error}=await sb.from(op.table_name).update(op.payload).eq(op.match_col,op.match_val);if(error)throw error;break;}
+        case 'DELETE':{const{error}=await sb.from(op.table_name).delete().eq(op.match_col,op.match_val);if(error)throw error;break;}
+      }
+      await idbMarkSynced(op.q_id);
+      ok++;
+    }catch(e){
+      fail++;
+      console.error('[SYNC] Falha ao sincronizar operação',op.q_id,':',e.message);
+    }
+  }
+
+  // Recarrega dados atualizados do servidor
+  await loadAll().catch(()=>{});
+  if(typeof renderMapa!=='undefined')renderMapa();
+
+  if(fail===0)toast(`✅ ${ok} operação(ões) sincronizadas com sucesso!`);
+  else toast(`⚠ ${ok} sincronizadas · ${fail} com erro — verifique o console`,'err');
+
+  _syncInProgress=false;
+  updatePendingBadge();
+}
+
+async function updatePendingBadge(){
+  const ops=await idbGetPending();
+  const badge=document.getElementById('sync-pending-badge');
+  if(!badge)return;
+  badge.style.display=ops.length?'inline':'none';
+  badge.textContent=`${ops.length} pendente(s)`;
+}
+
+/* ─── Verificação de escrita offline ──────────────────────────── */
+function checkOnlineForWrite(){
+  if(!navigator.onLine){
+    toast('🔴 Sem conexão. Conecte-se para registrar movimentações em tempo real.','err');
+    return false;
+  }
+  return true;
+}
+
+/* ─── Impressão / PDF do Mapa ─────────────────────────────────── */
+function imprimirMapa(){
+  // Marca data no body para o pseudo-elemento do CSS de impressão
+  document.body.setAttribute('data-print-date',new Date().toLocaleString('pt-BR'));
+  // Garante que o mapa está visível antes de imprimir
+  if(typeof renderMapa==='function')renderMapa();
+  setTimeout(()=>window.print(),200);
+}
+
+/* ─── PWA Install prompt ──────────────────────────────────────── */
+let _installPrompt=null;
+
+window.addEventListener('beforeinstallprompt',(e)=>{
+  e.preventDefault();
+  _installPrompt=e;
+  const btn=document.getElementById('btn-install-pwa');
+  if(btn)btn.style.display='inline-flex';
+  console.log('[PWA] Prompt de instalação disponível.');
+});
+
+document.getElementById('btn-install-pwa')?.addEventListener('click',async()=>{
+  if(!_installPrompt)return;
+  _installPrompt.prompt();
+  const{outcome}=await _installPrompt.userChoice;
+  console.log('[PWA] Resposta da instalação:',outcome);
+  if(outcome==='accepted'){
+    document.getElementById('btn-install-pwa').style.display='none';
+    _installPrompt=null;
+    toast('✅ Linter Control instalado! Acesse pelo ícone na área de trabalho.');
+  }
+});
+
+window.addEventListener('appinstalled',()=>{
+  console.log('[PWA] App instalado com sucesso!');
+  const btn=document.getElementById('btn-install-pwa');
+  if(btn)btn.style.display='none';
+});
+
+/* ─── Registro do Service Worker ─────────────────────────────── */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',async()=>{
+    try{
+      const reg=await navigator.serviceWorker.register('/service-worker.js');
+      console.log('[SW] Registrado:',reg.scope);
+
+      // Notifica quando nova versão está disponível
+      reg.addEventListener('updatefound',()=>{
+        const newSW=reg.installing;
+        newSW.addEventListener('statechange',()=>{
+          if(newSW.state==='installed'&&navigator.serviceWorker.controller){
+            toast('🔄 Nova versão disponível! Atualize a página para aplicar.');
+          }
+        });
+      });
+    }catch(e){
+      console.warn('[SW] Falha no registro:',e.message);
+    }
+  });
+}
+
+/* ─── Inicialização do módulo offline ─────────────────────────── */
+(async()=>{
+  await idbOpen().catch(e=>console.warn('[IDB] Não foi possível abrir o banco local:',e.message));
+  updateOnlineStatus();
+  await updatePendingBadge();
+  console.log('[PWA] Módulo offline inicializado. IndexedDB pronto.');
+})();
 
 </script>
 </body>
