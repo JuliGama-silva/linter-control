@@ -2,8 +2,10 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Linter Control"/>
   <title>Linter Control</title>
   <meta name="description" content="Sistema WMS de Gestão de Fardos — DUAL Agroindustrial"/>
   <meta name="theme-color" content="#D4950A"/>
@@ -589,6 +591,124 @@
       body::before{content:'Linter Control — Mapa do Armazém — ' attr(data-print-date);display:block;font-size:10px;color:#666;margin-bottom:6px;}
     }
 
+  
+    /* ═══ MOBILE — CORREÇÃO COMPLETA ═══════════════════════════ */
+
+    /* Fix 1: altura real do mobile (exclui barra do browser)
+       svh = small viewport height (sem a barra do browser)  */
+    @supports (height: 100svh) {
+      #app-screen, #app-sidebar, .main-area { height: 100svh; }
+    }
+    /* Fallback para browsers mais antigos */
+    @supports not (height: 100svh) {
+      #app-screen, #app-sidebar, .main-area { height: -webkit-fill-available; }
+    }
+
+    /* Fix iPhone notch / home indicator */
+    .topbar  { padding-left:  max(20px, env(safe-area-inset-left));
+               padding-right: max(20px, env(safe-area-inset-right)); }
+    .content { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+
+    /* ─── LAYOUT MOBILE (≤ 768px) ──────────────────────────── */
+    @media (max-width: 768px) {
+
+      /* Topbar: simplifica para caber na tela */
+      .topbar { padding: 0 12px; height: 52px; }
+      .topbar-datetime { display: none !important; }           /* oculta relógio */
+      #sync-pending-badge { display: none !important; }        /* oculta badge */
+      #btn-install-pwa { padding: 5px 8px !important; font-size: 10px !important; }
+      #online-indicator { font-size: 10px !important; padding: 2px 6px !important; }
+      .topbar-page-title { font-size: 13px !important; max-width: 120px;
+                           overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      #topbar-user { font-size: 12px !important; }
+      .topbar-role { display: none; }                          /* oculta "Administrador" */
+      .topbar-avatar { width: 28px !important; height: 28px !important;
+                       font-size: 12px !important; flex-shrink: 0; }
+
+      /* Sidebar: largura reduzida no mobile quando aberta */
+      #app-sidebar { width: 220px !important; }
+
+      /* Content: padding menor + PERMITE scroll horizontal para o mapa */
+      .content { padding: 10px 10px 20px !important;
+                 overflow-x: auto !important;          /* <-- fix do mapa */
+                 -webkit-overflow-scrolling: touch; }  /* scroll suave iOS */
+
+      /* Map: células menores para caber mais na tela */
+      .cell { width: 44px !important; height: 48px !important;
+              border-radius: 5px !important; margin: 0 1px !important; }
+      .cell:hover { transform: scale(1.05) !important; }
+      .cell-lote { font-size: 7px !important; }
+      .cell-prod { font-size: 0 !important; height: 0 !important; overflow: hidden !important; }
+      .cell-qty  { font-size: 8px !important; }
+      .av-num    { width: 44px !important; font-size: 8px !important; }
+      .rua-lbl   { width: 20px !important; font-size: 8px !important; }
+      .sep-cell  { width: 8px !important; }
+      .map-wrap  { padding: 10px !important; }
+      .occ-bar   { left: 2px; right: 2px; height: 4px !important; }
+
+      /* Mapa: título e botão PDF em linha vertical */
+      .btn-print-map { padding: 6px 10px !important; font-size: 11px !important; }
+
+      /* KPI cards: 2 colunas compactas */
+      #dash-kpi-row { grid-template-columns: 1fr 1fr !important; gap: 8px !important;
+                      margin-bottom: 12px !important; }
+      .kpi-wms-card { padding: 10px 12px !important; gap: 10px !important; }
+      .kpi-wms-icon { width: 36px !important; height: 36px !important;
+                      font-size: 17px !important; border-radius: 8px !important; }
+      .kpi-wms-val  { font-size: 17px !important; }
+      .kpi-wms-lbl  { font-size: 9px !important; }
+
+      /* Painel do bloco (drawer): largura total no mobile */
+      #bloco-panel:not(.hidden) {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        border-left: none !important;
+        border-top: 1px solid var(--border) !important;
+        top: 52px !important;                   /* abaixo do topbar */
+        height: calc(100svh - 52px) !important;
+        height: calc(100vh - 52px) !important;  /* fallback */
+      }
+
+      /* Histórico: KPI em 1 coluna */
+      #tab-historico .hist-kpi-row { grid-template-columns: 1fr !important; gap: 8px !important; }
+      #tab-historico .hist-filter-bar { flex-direction: column !important; gap: 8px !important; }
+      #tab-historico .htbl-head { display: none !important; }
+
+      /* Qualidade: grid 1 coluna */
+      .kpi-grid { grid-template-columns: 1fr 1fr !important; }
+      .chart-grid { grid-template-columns: 1fr !important; }
+
+      /* Formulários: padding menor */
+      .panel { padding: 12px !important; }
+      .ff label { font-size: 10px !important; }
+      .hist-input, .ff input, .ff select, .ff textarea {
+        padding: 10px 10px !important; font-size: 13px !important;
+      }
+      .btn { padding: 11px 14px !important; font-size: 13px !important; }
+
+      /* Sidebar nav */
+      .sidebar-nav-inner .nav-item {
+        padding: 10px 10px !important;
+        font-size: 12px !important;
+      }
+      .sidebar-nav-inner .nav-item .ni { font-size: 16px !important; }
+
+      /* Exportar Excel: painel colapsável */
+      .export-toggle { font-size: 12px !important; height: 40px !important; }
+
+      /* Tabela de história: modo cards em mobile (já existe mas reforça) */
+      #tab-historico .htbl-row { padding: 10px 12px !important; }
+    }
+
+    /* ─── TELAS MUITO PEQUENAS (< 380px) ────────────────────── */
+    @media (max-width: 380px) {
+      .cell { width: 38px !important; height: 42px !important; }
+      .av-num { width: 38px !important; }
+      .topbar-user-block { gap: 6px !important; }
+      #topbar-user { display: none !important; }   /* mostra só avatar */
+      #dash-kpi-row { grid-template-columns: 1fr !important; }
+    }
+
   </style>
 </head>
 <body>
@@ -930,8 +1050,8 @@ const {createClient}=supabase;
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
 
 const RUAS=['V','U','T','S','R','Q','P','O','N','M','L','K','J','I','H','G','F','E','D','C','B','A'];
-const AVS_E=[00,0,1,2,3,4,5,6,7,8];
-const AVS_D=[9,10,11,12,13,14,15,16,17,18];
+const AVS_E=[0,1,2,3,4,5,6,7,8,9];
+const AVS_D=[10,11,12,13,14,15,16,17,18];
 const PRODS=['Linter','Fibrilha','Algodãozinho','Fibrilha Torre','Podre'];
 const PS={'Linter':{bg:'#185FA530',border:'#378ADD',text:'#85B7EB',dot:'#378ADD'},'Fibrilha':{bg:'#3B6D1130',border:'#639922',text:'#97C459',dot:'#639922'},'Algodãozinho':{bg:'#BA751730',border:'#BA7517',text:'#FAC775',dot:'#BA7517'},'Fibrilha Torre':{bg:'#534AB730',border:'#7F77DD',text:'#AFA9EC',dot:'#7F77DD'},'Podre':{bg:'#DC262630',border:'#DC2626',text:'#FCA5A5',dot:'#DC2626'}};
 const ps=p=>PS[p]||{bg:'#22263a',border:'#2e3250',text:'#7a7f9a',dot:'#7a7f9a'};
@@ -2844,6 +2964,33 @@ function imprimirMapa(){
 
 /* ─── PWA Install prompt ──────────────────────────────────────── */
 let _installPrompt=null;
+
+
+/* ─── iOS: instrução de instalação (iOS não tem beforeinstallprompt) ── */
+(function(){
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches
+                     ||window.navigator.standalone===true;
+  if(isIOS&&!isStandalone){
+    // Cria banner discreto na primeira visita
+    const seen=sessionStorage.getItem('ios_banner_seen');
+    if(seen)return;
+    sessionStorage.setItem('ios_banner_seen','1');
+    const b=document.createElement('div');
+    b.id='ios-install-banner';
+    b.innerHTML=`<div style="background:#1F2937;border:1px solid #374151;border-radius:12px;padding:12px 14px;margin:10px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.4);">
+      <span style="font-size:22px;">📲</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#F9FAFB;">Instalar Linter Control</div>
+        <div style="font-size:11px;color:#9CA3AF;margin-top:3px;">Toque em <strong>⎋ Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong></div>
+      </div>
+      <button onclick="document.getElementById('ios-install-banner').remove()" style="background:none;border:none;color:#9CA3AF;font-size:18px;cursor:pointer;padding:4px;">✕</button>
+    </div>`;
+    b.style.cssText='position:fixed;top:60px;left:0;right:0;z-index:9999;pointer-events:auto;';
+    document.body.appendChild(b);
+    setTimeout(()=>b.remove(),8000); // some após 8 segundos
+  }
+})();
 
 window.addEventListener('beforeinstallprompt',(e)=>{
   e.preventDefault();
