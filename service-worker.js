@@ -1,11 +1,14 @@
 /**
- * LINTER CONTROL — Service Worker
+ * LINTER CONTROL — Service Worker v2
  * Estratégia: Cache-First para assets estáticos, Network-Only para API Supabase.
  * O app abre mesmo sem internet graças ao cache do shell.
+ *
+ * IMPORTANTE: Sempre que publicar uma atualização, incremente o número
+ * da versão abaixo (v2 → v3 → v4...) para forçar o app a atualizar.
  */
 
-const CACHE_NAME = 'linter-control-v1';
-const CACHE_VERSION = 1;
+const CACHE_NAME = 'linter-control-v2';
+const CACHE_VERSION = 2;
 
 // Assets do app shell — cacheados na instalação
 const SHELL_ASSETS = [
@@ -17,7 +20,7 @@ const SHELL_ASSETS = [
 ];
 
 // CDN assets — cacheados dinamicamente na primeira carga
-const CDN_CACHE = 'linter-cdn-v1';
+const CDN_CACHE = 'linter-cdn-v2';
 
 /* ─── INSTALL: cache do app shell ─────────────────────────────── */
 self.addEventListener('install', (event) => {
@@ -80,27 +83,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. App shell e assets locais — Cache First
+  // 3. App shell e assets locais — Network First (busca novo, cai no cache se offline)
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-
-      return fetch(event.request)
-        .then(response => {
-          if (response.ok && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => {
-          // Offline e não está no cache — retorna index.html (SPA fallback)
+    fetch(event.request)
+      .then(response => {
+        if (response.ok && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => {
+        // Offline — serve do cache
+        return caches.match(event.request).then(cached => {
+          if (cached) return cached;
           if (event.request.destination === 'document') {
             return caches.match('/index.html');
           }
           return new Response('Recurso não disponível offline.', { status: 503 });
         });
-    })
+      })
   );
 });
 
