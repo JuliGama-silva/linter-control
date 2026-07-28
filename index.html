@@ -3018,22 +3018,89 @@ window.addEventListener('appinstalled',()=>{
   if(btn)btn.style.display='none';
 });
 
-/* ─── Registro do Service Worker ─────────────────────────────── */
+/* ─── Registro do Service Worker + Banner de Atualização ─────── */
 if('serviceWorker' in navigator){
   window.addEventListener('load',async()=>{
     try{
       const reg=await navigator.serviceWorker.register('/service-worker.js');
       console.log('[SW] Registrado:',reg.scope);
 
-      // Notifica quando nova versão está disponível
+      // Função que mostra o banner de atualização
+      function mostrarBannerAtualizacao(sw){
+        // Remove banner anterior se existir
+        const anterior=document.getElementById('update-banner');
+        if(anterior)anterior.remove();
+
+        const banner=document.createElement('div');
+        banner.id='update-banner';
+        banner.innerHTML=`
+          <div style="
+            position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+            background:#D4950A;color:#0B1220;
+            border-radius:14px;padding:14px 20px;
+            display:flex;align-items:center;gap:14px;
+            box-shadow:0 8px 32px rgba(0,0,0,.5);
+            z-index:99999;max-width:90vw;font-family:var(--font,sans-serif);
+            animation:slideUp .3s ease;
+          ">
+            <style>
+              @keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+            </style>
+            <span style="font-size:22px;">🔄</span>
+            <div>
+              <div style="font-size:13px;font-weight:800;margin-bottom:2px;">Nova versão disponível!</div>
+              <div style="font-size:11px;opacity:.85;">Toque para atualizar agora.</div>
+            </div>
+            <button id="btn-apply-update" style="
+              background:#0B1220;color:#FFBE2E;border:none;border-radius:9px;
+              padding:10px 16px;font-size:13px;font-weight:800;cursor:pointer;
+              white-space:nowrap;flex-shrink:0;
+            ">↺ Atualizar</button>
+            <button onclick="document.getElementById('update-banner').remove()" style="
+              background:none;border:none;color:#0B1220;font-size:20px;
+              cursor:pointer;padding:4px;opacity:.7;flex-shrink:0;
+            ">✕</button>
+          </div>`;
+        document.body.appendChild(banner);
+
+        document.getElementById('btn-apply-update').onclick=()=>{
+          // Manda o novo SW assumir o controle imediatamente
+          sw.postMessage('SKIP_WAITING');
+        };
+      }
+
+      // Detecta quando uma nova versão termina de baixar
+      function verificarAtualizacao(r){
+        if(r.installing){
+          r.installing.addEventListener('statechange',function(){
+            if(this.state==='installed'&&navigator.serviceWorker.controller){
+              console.log('[SW] Nova versão instalada e pronta.');
+              mostrarBannerAtualizacao(this);
+            }
+          });
+        }
+      }
+
+      // Checa na instalação atual
+      verificarAtualizacao(reg);
+
+      // Checa quando o SW encontra uma atualização no servidor
       reg.addEventListener('updatefound',()=>{
-        const newSW=reg.installing;
-        newSW.addEventListener('statechange',()=>{
-          if(newSW.state==='installed'&&navigator.serviceWorker.controller){
-            toast('🔄 Nova versão disponível! Atualize a página para aplicar.');
-          }
-        });
+        console.log('[SW] Atualização encontrada, baixando...');
+        verificarAtualizacao(reg);
       });
+
+      // Quando o novo SW assume, recarrega o app para aplicar
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{
+        console.log('[SW] Novo Service Worker assumiu controle — recarregando...');
+        window.location.reload();
+      });
+
+      // Verifica atualização a cada 30 minutos automaticamente
+      setInterval(()=>{
+        reg.update().catch(()=>{});
+      }, 30 * 60 * 1000);
+
     }catch(e){
       console.warn('[SW] Falha no registro:',e.message);
     }
