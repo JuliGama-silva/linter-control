@@ -546,7 +546,51 @@
     }
 
   
-    /* ═══ PWA / PRINT ═══════════════════════════════════════ */
+    /* ═══ MOBILE — touch fix para células do mapa ═══════════════ */
+
+    /* touch-action:manipulation:
+       - Elimina o delay de 300ms em tap
+       - Impede que o browser interprete o toque como scroll/zoom
+       - Garante que o click dispara imediatamente no toque */
+    .cell {
+      touch-action: manipulation;
+      cursor: pointer;
+      -webkit-tap-highlight-color: rgba(212,149,10,0.25); /* feedback visual amber no tap */
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Feedback visual de toque (substitui hover no mobile) */
+    .cell:active {
+      transform: scale(0.93) !important;
+      opacity: 0.8;
+      transition: transform 0.05s, opacity 0.05s;
+    }
+
+    @media (max-width: 900px) {
+      /* Remove o scale no hover — no mobile o hover dispara no 1º toque,
+         desloca a célula e o browser não registra o clique */
+      .cell:hover {
+        transform: none !important;
+        box-shadow: none !important;
+        z-index: auto !important;
+      }
+      /* O :active acima já dá o feedback visual correto */
+
+      /* Corrige conflito de overflow aninhado:
+         .content com overflow-x:auto + .map-wrap com overflow:auto
+         fazem o browser engolir toques tentando detectar scroll.
+         Solução: .content fica sem scroll horizontal (recebe scroll do .map-wrap) */
+      .content {
+        overflow-x: hidden !important;
+      }
+      /* .map-wrap cuida do scroll horizontal do mapa sozinho */
+      .map-wrap {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
     .online-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.3px;cursor:default;}
     .online-badge.online{background:rgba(74,222,128,.15);color:#4ADE80;border:1px solid rgba(74,222,128,.35);}
     .online-badge.offline{background:rgba(252,165,165,.15);color:#FCA5A5;border:1px solid rgba(252,165,165,.35);animation:pulse-red 2s infinite;}
