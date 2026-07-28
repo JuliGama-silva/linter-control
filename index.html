@@ -546,6 +546,7 @@
     }
 
   
+    .cell-lote,.cell-prod,.cell-qty,.cell-pct,.occ-bar,.occ-fill{pointer-events:none;}
     /* ═══ MOBILE — touch fix para células do mapa ═══════════════ */
 
     /* touch-action:manipulation:
@@ -1273,7 +1274,39 @@ function occupancyColor(pct){
 function renderMapa(){
   const grid=document.getElementById('warehouse-grid');
   let h=`<div class="av-row">`;AVS_E.forEach(a=>h+=`<div class="av-num">${a}</div>`);h+=`<div class="sep-cell"></div>`;AVS_D.forEach(a=>h+=`<div class="av-num">${a}</div>`);h+=`</div>`;
-  RUAS.forEach(rua=>{h+=`<div class="rua-row"><div class="rua-lbl">${rua}</div>`;[...AVS_E,null,...AVS_D].forEach(av=>{if(av===null){h+=`<div class="sep-cell"></div>`;return;}const b=findB(rua,av);const bid=b?b.id:null;const tot=bid?totB(bid):0;const cap=b?b.capacidade:140;const pct=bid?tot/cap:0;const prod=bid?mainP(bid):null;const st=prod?ps(prod):{bg:'#22263a',border:'#2e3250',text:'#7a7f9a'};const isSel=selectedBloco&&b&&selectedBloco===b.id;const ls=bid?getBL(bid):[];const occCol=occupancyColor(pct);h+=`<div class="cell${isSel?' selected':''}" data-rua="${rua}" data-av="${av}" style="background:${st.bg};border-color:${st.border}">`;if(tot>0&&ls.length){h+=`<div class="cell-lote" style="color:${st.text}">${ls[0].lote}</div>`;h+=`<div class="cell-prod" style="color:${st.text}">${prod}</div>`;h+=`<div class="cell-qty" style="color:${st.text}">${tot}/${cap}</div>`;}if(occCol)h+=`<div class="occ-bar"><div class="occ-fill" style="width:${Math.min(pct*100,100)}%;background:${occCol}"></div></div>`;h+=`</div>`;});h+=`</div>`;});h+=`<div class="inicio-bar">▲  INÍCIO / ENTRADA  ▲</div>`;grid.innerHTML=h;grid.querySelectorAll('.cell').forEach(el=>{el.addEventListener('click',()=>{const b=findB(el.dataset.rua,parseInt(el.dataset.av));if(!b){toast('Bloco não cadastrado.','err');return;}selectedBloco=b.id;actionTab='lotes';selectedLote=null;renderMapa();renderBlocoPanel();});});const panel=document.getElementById('bloco-panel');if(!selectedBloco){panel.classList.add('hidden');return;}renderBlocoPanel();
+  RUAS.forEach(rua=>{h+=`<div class="rua-row"><div class="rua-lbl">${rua}</div>`;[...AVS_E,null,...AVS_D].forEach(av=>{if(av===null){h+=`<div class="sep-cell"></div>`;return;}const b=findB(rua,av);const bid=b?b.id:null;const tot=bid?totB(bid):0;const cap=b?b.capacidade:140;const pct=bid?tot/cap:0;const prod=bid?mainP(bid):null;const st=prod?ps(prod):{bg:'#22263a',border:'#2e3250',text:'#7a7f9a'};const isSel=selectedBloco&&b&&selectedBloco===b.id;const ls=bid?getBL(bid):[];const occCol=occupancyColor(pct);h+=`<div class="cell${isSel?' selected':''}" role="button" data-rua="${rua}" data-av="${av}" style="background:${st.bg};border-color:${st.border}">`;if(tot>0&&ls.length){h+=`<div class="cell-lote" style="color:${st.text}">${ls[0].lote}</div>`;h+=`<div class="cell-prod" style="color:${st.text}">${prod}</div>`;h+=`<div class="cell-qty" style="color:${st.text}">${tot}/${cap}</div>`;}if(occCol)h+=`<div class="occ-bar"><div class="occ-fill" style="width:${Math.min(pct*100,100)}%;background:${occCol}"></div></div>`;h+=`</div>`;});h+=`</div>`;});h+=`<div class="inicio-bar">▲  INÍCIO / ENTRADA  ▲</div>`;grid.innerHTML=h;
+
+  /* Event delegation + touchend — abordagem correta para mobile iOS/Android.
+     - touchend com preventDefault(): dispara imediatamente, sem 300ms de delay
+     - closest('.cell[data-rua]'): funciona mesmo que o toque caia num filho (cell-lote, cell-qty, etc.)
+     - _gridInit: evita adicionar múltiplos listeners quando renderMapa() é chamado de novo */
+  if(!grid._gridInit){
+    grid._gridInit=true;
+    let _scrolled=false;
+    grid.addEventListener('touchstart',()=>{_scrolled=false;},{passive:true});
+    grid.addEventListener('touchmove',()=>{_scrolled=true;},{passive:true});
+    grid.addEventListener('touchend',(e)=>{
+      if(_scrolled)return; // foi scroll, não tap — ignora
+      const cell=e.target.closest('.cell[data-rua]');
+      if(!cell)return;
+      e.preventDefault(); // cancela ghost-click de 300ms que viria depois
+      const b=findB(cell.dataset.rua,parseInt(cell.dataset.av));
+      if(!b){toast('Bloco não cadastrado.','err');return;}
+      selectedBloco=b.id;actionTab='lotes';selectedLote=null;
+      renderMapa();renderBlocoPanel();
+    },{passive:false});
+    // fallback click para desktop (mouse)
+    grid.addEventListener('click',(e)=>{
+      const cell=e.target.closest('.cell[data-rua]');
+      if(!cell)return;
+      const b=findB(cell.dataset.rua,parseInt(cell.dataset.av));
+      if(!b){toast('Bloco não cadastrado.','err');return;}
+      selectedBloco=b.id;actionTab='lotes';selectedLote=null;
+      renderMapa();renderBlocoPanel();
+    });
+  }
+
+  const panel=document.getElementById('bloco-panel');if(!selectedBloco){panel.classList.add('hidden');return;}renderBlocoPanel();
 }
 
 function renderBlocoPanel(){
