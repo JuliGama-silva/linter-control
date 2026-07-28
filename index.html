@@ -192,74 +192,6 @@
 
   
     /* ════════════════════════════════════════════════════════════
-       MODERNIZAÇÃO VISUAL — shell com barra lateral + dashboard
-       ════════════════════════════════════════════════════════════ */
-    .app-shell{display:flex;min-height:100vh;}
-    .sidebar{width:226px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;transition:width .2s ease,transform .2s ease;z-index:200;}
-    .sidebar.collapsed{width:68px;}
-    .sidebar-head{display:flex;align-items:center;gap:10px;padding:16px 14px;border-bottom:1px solid var(--border);}
-    .sidebar-logo{height:30px;width:auto;max-width:120px;object-fit:contain;flex-shrink:0;}
-    .sidebar-brand{font-size:13px;font-weight:800;color:var(--accent2);letter-spacing:.5px;white-space:nowrap;overflow:hidden;}
-    .sidebar.collapsed .sidebar-brand,.sidebar.collapsed .nav-label{display:none;}
-    .sidebar-nav{flex:1;padding:10px 8px;display:flex;flex-direction:column;gap:2px;}
-    .sidebar .nav-item{flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;padding:11px 12px;border-radius:10px;font-size:13px;font-weight:600;width:100%;text-align:left;}
-    .sidebar .nav-item .ni{font-size:18px;margin-bottom:0;width:22px;text-align:center;flex-shrink:0;}
-    .sidebar .nav-item:hover{background:var(--card);color:var(--text);}
-    .sidebar .nav-item.active{background:linear-gradient(135deg,#D4950A22,#D4950A0c);color:var(--accent2);border-left:3px solid var(--accent);padding-left:9px;}
-    .sidebar-foot{padding:10px;border-top:1px solid var(--border);}
-    .btn-collapse{width:100%;background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;}
-    .btn-collapse:hover{color:var(--accent2);border-color:var(--accent);}
-    .main-area{flex:1;min-width:0;display:flex;flex-direction:column;min-height:100vh;}
-    .btn-hamburger{display:none;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;width:36px;height:36px;align-items:center;justify-content:center;font-size:18px;cursor:pointer;margin-right:10px;}
-    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:190;}
-    .sidebar-overlay.show{display:block;}
-
-    @media(max-width:900px){
-      .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);box-shadow:4px 0 24px rgba(0,0,0,.4);}
-      .sidebar.mobile-open{transform:translateX(0);}
-      .sidebar.collapsed{width:226px;} /* no mobile, collapse não se aplica — sempre largura cheia quando aberta */
-      .btn-hamburger{display:flex;}
-    }
-
-    /* Larguras de conteúdo: mapa/dashboard usam mais espaço; telas de formulário/lista ficam confortáveis */
-    .content-wide{max-width:1500px;margin:0 auto;width:100%;}
-    .content-narrow{max-width:760px;margin:0 auto;width:100%;}
-
-    /* ── Cards do Dashboard inicial ── */
-    .kpi-dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
-    @media(max-width:1100px){.kpi-dash-grid{grid-template-columns:repeat(2,1fr);}}
-    @media(max-width:560px){.kpi-dash-grid{grid-template-columns:1fr;}}
-    .kpi-dash-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.18);position:relative;overflow:hidden;}
-    .kpi-dash-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--accent);}
-    .kpi-dash-card.c-green::before{background:var(--green2);}
-    .kpi-dash-card.c-blue::before{background:var(--blue2);}
-    .kpi-dash-card.c-amber::before{background:var(--accent2);}
-    .kpi-dash-card.c-purple::before{background:#AFA9EC;}
-    .kpi-dash-icon{font-size:22px;margin-bottom:8px;opacity:.85;}
-    .kpi-dash-val{font-size:26px;font-weight:800;line-height:1.15;color:var(--text);}
-    .kpi-dash-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:4px;}
-    .kpi-dash-sub{font-size:11px;color:var(--muted);margin-top:6px;}
-    .dash-section-title{font-size:14px;font-weight:800;color:var(--accent2);margin:6px 0 12px;letter-spacing:.3px;}
-
-    /* ── Painel lateral (drawer) do bloco — substitui o painel fixo abaixo do mapa ── */
-    .bloco-drawer{position:fixed;top:0;right:0;height:100vh;width:420px;max-width:92vw;background:var(--surface);border-left:1px solid var(--border);box-shadow:-8px 0 32px rgba(0,0,0,.45);z-index:300;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;padding:18px;}
-    .bloco-drawer.open{transform:translateX(0);}
-    .drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:295;}
-    .drawer-backdrop.show{display:block;}
-
-    /* ── Células do mapa — versão "profissional", maiores, cor por ocupação ── */
-    .cell{width:58px;height:64px;}
-    .cell-lote{font-size:9px;font-weight:800;max-width:54px;}
-    .cell-prod-dot{position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;}
-    .cell-qty{font-size:10px;}
-    .cell-pct{font-size:9px;font-weight:800;margin-top:1px;letter-spacing:.3px;}
-    .map-wrap{padding:18px;}
-    .map-inner{min-width:680px;}
-
-    /* ── Topbar levemente refinada ── */
-    .topbar{box-shadow:0 1px 6px rgba(0,0,0,.2);}
-
-  
     /* ═══════════════════════════════════════════════════════════
        WMS MODERNIZATION — COMPLETE VISUAL SYSTEM
        ═══════════════════════════════════════════════════════════ */
@@ -775,8 +707,7 @@
 <div id="app-screen" class="hidden">
   <div id="sidebar-overlay"></div>
   <div id="offline-banner">
-    🔴 Modo Offline — Os dados serão sincronizados automaticamente quando a conexão retornar.
-    <button onclick="syncWithSupabase()" style="margin-left:10px;background:#FCA5A5;color:#7F1D1D;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;">↺ Sincronizar agora</button>
+    🔴 Modo Offline — Conecte-se à internet para registrar movimentações. Os dados em tela são do último acesso online.
   </div>
   <div id="drawer-backdrop"></div>
 
@@ -1142,8 +1073,8 @@ async function loadBlocos(){
     const{data:bd}=await sb.from('blocos').select('*').order('id');
     const{data:ld}=await sb.from('lotes').select('*').order('entrada_em');
     blocos=bd||[];lotes=ld||[];
-    idbSave('idb_blocos',blocos).catch(()=>{});
-    idbSave('idb_lotes',lotes).catch(()=>{});
+    idbSave('idb_blocos',blocos).catch(e=>console.warn('[IDB] Erro ao salvar blocos:',e.message));
+    idbSave('idb_lotes',lotes).catch(e=>console.warn('[IDB] Erro ao salvar lotes:',e.message));
   }catch(e){
     console.warn('[OFFLINE] loadBlocos: fallback para IndexedDB.',e.message);
     blocos=await idbGetAll('idb_blocos').catch(()=>[]);
@@ -1154,7 +1085,7 @@ async function loadHistorico(){
   try{
     const{data}=await sb.from('historico').select('*').order('quando',{ascending:false}).limit(300);
     historico=data||[];
-    idbSave('idb_historico',historico).catch(()=>{});
+    idbSave('idb_historico',historico).catch(e=>console.warn('[IDB] Erro ao salvar historico:',e.message));
   }catch(e){
     console.warn('[OFFLINE] loadHistorico: fallback para IndexedDB.',e.message);
     historico=await idbGetAll('idb_historico').catch(()=>[]);
@@ -1166,7 +1097,7 @@ async function loadUsuarios(){
   try{
     const{data}=await sb.from('usuarios').select('*').order('nome');
     usuarios=data||[];
-    idbSave('idb_usuarios',usuarios).catch(()=>{});
+    idbSave('idb_usuarios',usuarios).catch(e=>console.warn('[IDB] Erro ao salvar usuarios:',e.message));
   }catch(e){
     console.warn('[OFFLINE] loadUsuarios: fallback para IndexedDB.',e.message);
     usuarios=await idbGetAll('idb_usuarios').catch(()=>[]);
@@ -1385,6 +1316,7 @@ function renderPanelBody(b,livre){
     atualizarModo();
 
     btnE.onclick=async()=>{
+      if(!checkOnlineForWrite())return; // FIX: bloqueia offline antes de qualquer lógica
       const lote=loteInput.value.trim().toUpperCase();
       const nf=document.getElementById('f-nf').value.trim()||null;
       const obs=document.getElementById('f-obs').value.trim()||null;
@@ -1487,6 +1419,7 @@ function renderPanelBody(b,livre){
         const obs=document.getElementById('f-sobs').value.trim()||null;
         if(!n||n<=0)return toast('Quantidade inválida.','err');
         if(n>selObj.fardos)return toast(`Máximo: ${selObj.fardos}.`,'err');
+        if(!checkOnlineForWrite())return; // FIX: bloqueia offline antes de qualquer lógica
         document.getElementById('btn-saida').disabled=true;
         try{
           const saldoFinal=selObj.fardos-n;
@@ -2227,7 +2160,7 @@ async function loadQualidade(){
     }else{
       qualidade=data||[];
       console.log('[QUALIDADE] Registros:',qualidade.length);
-      idbSave('idb_qualidade',qualidade).catch(()=>{});
+      idbSave('idb_qualidade',qualidade).catch(e=>console.warn('[IDB] Erro ao salvar qualidade:',e.message));
     }
   }catch(e){
     console.warn('[OFFLINE] loadQualidade: fallback para IndexedDB.',e.message);
@@ -2490,6 +2423,7 @@ function atualizarAlertaForm(){
 
 async function salvarAnalise(){
   console.log('[QUALIDADE] Salvando nova análise...');
+  if(!checkOnlineForWrite())return; // FIX: bloqueia offline antes de qualquer lógica
   const loteEl=document.getElementById('qf-lote');
   if(!loteEl.value)return toast('Selecione o lote.','err');
   const o=loteEl.selectedOptions[0];
@@ -2891,7 +2825,7 @@ async function idbSave(store,records){
       const tx=db.transaction(store,'readwrite');
       const s=tx.objectStore(store);
       s.clear();
-      (records||[]).forEach(r=>{try{s.put(r);}catch{}});
+      (records||[]).forEach(r=>{try{s.put(r);}catch(e){console.warn('[IDB] Erro ao gravar registro em',store,':',e.message,'— registro:',r?.id||'sem id');}});
       tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);
     });
   }catch(e){console.warn('[IDB] Erro ao salvar em',store,e.message);}
@@ -2973,52 +2907,21 @@ window.addEventListener('offline',()=>{
 let _syncInProgress=false;
 
 async function syncWithSupabase(){
-  if(_syncInProgress||!navigator.onLine)return;
-  _syncInProgress=true;
-  const ops=await idbGetPending();
-  if(!ops.length){
-    _syncInProgress=false;
-    // Recarrega dados frescos do servidor
-    await loadAll().catch(()=>{});
-    if(typeof renderMapa!=='undefined')renderMapa();
-    return;
+  if(!navigator.onLine)return;
+  console.log('[SYNC] Conexão restaurada — recarregando dados do servidor...');
+  try{
+    await loadAll();
+    if(typeof renderMapa==='function')renderMapa();
+    console.log('[SYNC] Dados atualizados com sucesso.');
+  }catch(e){
+    console.warn('[SYNC] Erro ao recarregar dados:',e.message);
   }
-
-  console.log(`[SYNC] ${ops.length} operação(ões) pendentes para sincronizar.`);
-  let ok=0,fail=0;
-
-  for(const op of ops){
-    try{
-      switch(op.op_type){
-        case 'INSERT':{const{error}=await sb.from(op.table_name).insert(op.payload);if(error)throw error;break;}
-        case 'UPDATE':{const{error}=await sb.from(op.table_name).update(op.payload).eq(op.match_col,op.match_val);if(error)throw error;break;}
-        case 'DELETE':{const{error}=await sb.from(op.table_name).delete().eq(op.match_col,op.match_val);if(error)throw error;break;}
-      }
-      await idbMarkSynced(op.q_id);
-      ok++;
-    }catch(e){
-      fail++;
-      console.error('[SYNC] Falha ao sincronizar operação',op.q_id,':',e.message);
-    }
-  }
-
-  // Recarrega dados atualizados do servidor
-  await loadAll().catch(()=>{});
-  if(typeof renderMapa!=='undefined')renderMapa();
-
-  if(fail===0)toast(`✅ ${ok} operação(ões) sincronizadas com sucesso!`);
-  else toast(`⚠ ${ok} sincronizadas · ${fail} com erro — verifique o console`,'err');
-
-  _syncInProgress=false;
-  updatePendingBadge();
 }
 
 async function updatePendingBadge(){
-  const ops=await idbGetPending();
+  // Fila offline não está implementada nesta versão — mantém badge oculto
   const badge=document.getElementById('sync-pending-badge');
-  if(!badge)return;
-  badge.style.display=ops.length?'inline':'none';
-  badge.textContent=`${ops.length} pendente(s)`;
+  if(badge)badge.style.display='none';
 }
 
 /* ─── Verificação de escrita offline ──────────────────────────── */
@@ -3175,7 +3078,7 @@ if('serviceWorker' in navigator){
 
       // Verifica atualização a cada 30 minutos automaticamente
       setInterval(()=>{
-        reg.update().catch(()=>{});
+        reg.update().catch(e=>console.warn('[SW] Erro ao verificar atualização:',e.message));
       }, 30 * 60 * 1000);
 
     }catch(e){
