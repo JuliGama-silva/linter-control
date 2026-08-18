@@ -528,7 +528,17 @@
     .online-badge.online{background:rgba(74,222,128,.15);color:#4ADE80;border:1px solid rgba(74,222,128,.35);}
     .online-badge.offline{background:rgba(252,165,165,.15);color:#FCA5A5;border:1px solid rgba(252,165,165,.35);animation:pulse-red 2s infinite;}
     @keyframes pulse-red{0%,100%{opacity:1;}50%{opacity:.65;}}
-    #offline-banner{display:none;background:#7F1D1D;color:#FEE2E2;padding:8px 16px;font-size:12px;font-weight:600;align-items:center;gap:10px;justify-content:center;flex-shrink:0;}
+    #offline-banner{
+      display:none;
+      position:fixed;
+      top:62px;left:50%;transform:translateX(-50%);
+      background:#7F1D1D;color:#FEE2E2;
+      padding:8px 18px;font-size:12px;font-weight:600;
+      border-radius:20px;border:1px solid #FCA5A5;
+      white-space:nowrap;z-index:9000;
+      box-shadow:0 4px 16px rgba(0,0,0,.5);
+      pointer-events:none;
+    }
     #sync-pending-badge{display:none;background:rgba(212,149,10,.25);color:var(--accent2);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;}
     #btn-install-pwa{display:none;background:var(--card);border:1px solid var(--border);color:var(--accent2);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:border-color .15s;}
     #btn-install-pwa:hover{border-color:var(--accent);}
@@ -1179,21 +1189,54 @@ async function doLogin(){
   document.getElementById('btn-login').disabled=true;
   document.getElementById('btn-login').textContent='Entrando…';
   try{
+    // ── MODO OFFLINE: usa sessão salva no último login online ──────────
+    if(!navigator.onLine){
+      const cached=localStorage.getItem('lc_session');
+      if(cached){
+        const session=JSON.parse(cached);
+        if(session.login===login&&session.senha===senha){
+          console.log('[LOGIN] Offline: sessão restaurada do cache para',session.nome);
+          _finalizarLogin(session);
+          return;
+        }
+      }
+      err.textContent='Sem conexão. Para acessar offline, faça login online primeiro.';
+      err.classList.remove('hidden');
+      return;
+    }
+    // ── MODO ONLINE: autenticação normal via Supabase ─────────────────
     const {data,error}=await sb.from('usuarios').select('*').eq('login',login).eq('senha',senha).eq('ativo',true).single();
     if(error||!data){err.textContent='Usuário ou senha incorretos.';err.classList.remove('hidden');return;}
-    currentUser=data;
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app-screen').classList.remove('hidden');
-    document.getElementById('topbar-user').textContent=data.nome;
-    document.getElementById('topbar-role').textContent=data.role==='admin'?'Administrador':'Operador';
-    if(!isAdmin()){document.getElementById('nav-audit').classList.add('hidden-nav');document.getElementById('nav-admin').classList.add('hidden-nav');}
-    // Registro de login na auditoria — não bloqueante: nunca interfere no fluxo de login
-    sb.from('auditoria').insert({acao:'LOGIN',tabela:'usuarios',registro_id:null,usuario_id:data.id,usuario_nome:data.nome,dados_antigos:null,dados_novos:null,motivo:'Login realizado com sucesso'}).then(({error})=>{if(error)console.error('[AUDITORIA][DEBUG] Falha ao registrar LOGIN:',{message:error.message,code:error.code,details:error.details,hint:error.hint});else console.log('[AUDITORIA][DEBUG] LOGIN registrado com sucesso.');}).catch(e=>console.error('[AUDITORIA][DEBUG] Erro inesperado ao registrar LOGIN:',e));
-    await loadAll();showTab('mapa');
+    // Salva sessão no localStorage para acesso offline futuro
+    localStorage.setItem('lc_session',JSON.stringify({
+      id:data.id,nome:data.nome,login:data.login,senha:data.senha,role:data.role,ativo:data.ativo
+    }));
+    _finalizarLogin(data);
   }catch{err.textContent='Erro de conexão.';err.classList.remove('hidden');}
   finally{document.getElementById('btn-login').disabled=false;document.getElementById('btn-login').textContent='Entrar';}
 }
-function doLogout(){currentUser=null;blocos=[];lotes=[];historico=[];document.getElementById('app-screen').classList.add('hidden');document.getElementById('login-screen').classList.remove('hidden');document.getElementById('li-pass').value='';}
+
+function _finalizarLogin(data){
+  currentUser=data;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-screen').classList.remove('hidden');
+  document.getElementById('topbar-user').textContent=data.nome;
+  document.getElementById('topbar-role').textContent=data.role==='admin'?'Administrador':'Operador';
+  if(!isAdmin()){document.getElementById('nav-audit').classList.add('hidden-nav');document.getElementById('nav-admin').classList.add('hidden-nav');}
+  // Registro de login na auditoria — não bloqueante
+  if(navigator.onLine){
+    sb.from('auditoria').insert({acao:'LOGIN',tabela:'usuarios',registro_id:null,usuario_id:null,usuario_nome:data.nome,dados_antigos:null,dados_novos:null,motivo:'Login realizado com sucesso'}).then(({error})=>{if(error)console.error('[AUDITORIA] Falha ao registrar LOGIN:',error.message);}).catch(()=>{});
+  }
+  loadAll().then(()=>showTab('mapa'));
+}
+
+function doLogout(){
+  currentUser=null;blocos=[];lotes=[];historico=[];
+  // Mantém a sessão no localStorage para login offline futuro
+  document.getElementById('app-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('li-pass').value='';
+}
 
 document.querySelectorAll('.nav-item').forEach(el=>el.addEventListener('click',()=>showTab(el.dataset.tab)));
 function showTab(tab){selectedBloco=null;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));['mapa','estoque','historico','local','auditoria','admin','qualidade'].forEach(t=>document.getElementById(`tab-${t}`).classList.toggle('hidden',t!==tab));if(tab==='mapa')renderMapa();if(tab==='estoque')renderEstoque();if(tab==='historico')renderHistorico();if(tab==='local')renderLocal();if(tab==='auditoria')renderAuditoria();if(tab==='admin')renderAdmin();if(tab==='qualidade')renderQualidade();}
@@ -2657,21 +2700,21 @@ async function exportarQualExcel(){
     const tSt={font:{bold:true,sz:13,color:{rgb:'FF0C0E14'}},fill:{patternType:'solid',fgColor:{rgb:'FFD4950A'}},alignment:{horizontal:'center'}};
     const sSt={font:{sz:9,color:{rgb:'FFFAC775'}},fill:{patternType:'solid',fgColor:{rgb:'FF1E2235'}},alignment:{horizontal:'center'}};
     const hSt={font:{bold:true,sz:10,color:{rgb:'FF0C0E14'}},fill:{patternType:'solid',fgColor:{rgb:'FFBA7517'}},alignment:{horizontal:'center'}};
-    const COLS=['DATA','HORA','LOTE','RUA','AVENIDA','PRODUTO','CELULOSE (%)','UMIDADE (%)','RESÍDUO ÓLEO (%)','IMPUREZA (%)','OBSERVAÇÃO','USUÁRIO RESPONSÁVEL'];
+    const COLS=['DATA','HORA','LOTE','FARDOS NO LOTE','RUA','AVENIDA','PRODUTO','CELULOSE (%)','UMIDADE (%)','RESÍDUO ÓLEO (%)','IMPUREZA (%)','OBSERVAÇÃO','USUÁRIO RESPONSÁVEL'];
     const aoa=[
-      [nomeEmpresa,'','','','','','','','','','',''],
-      ['Relatório de Qualidade do Linter','','','','','','','','','','',''],
-      [`Emitido em: ${emissao}`,'','','','','','','','','','',''],
-      ['','','','','','','','','','','',''],
+      [nomeEmpresa,'','','','','','','','','','','',''],
+      ['Relatório de Qualidade do Linter','','','','','','','','','','','',''],
+      [`Emitido em: ${emissao}`,'','','','','','','','','','','',''],
+      ['','','','','','','','','','','','',''],
       COLS,
-      ...data.map(q=>{const dt=new Date(q.criado_em);return[dt.toLocaleDateString('pt-BR'),dt.toLocaleTimeString('pt-BR'),q.lote||'',q.rua??'',q.avenida??'',q.produto??'',q.celulose!=null?parseFloat(q.celulose):null,q.umidade!=null?parseFloat(q.umidade):null,q.residuo_oleo!=null?parseFloat(q.residuo_oleo):null,q.impureza!=null?parseFloat(q.impureza):null,q.observacao||'',q.usuario_nome||''];})
+      ...data.map(q=>{const dt=new Date(q.criado_em);return[dt.toLocaleDateString('pt-BR'),dt.toLocaleTimeString('pt-BR'),q.lote||'',q.fardos_estoque!=null?q.fardos_estoque:null,q.rua??'',q.avenida??'',q.produto??'',q.celulose!=null?parseFloat(q.celulose):null,q.umidade!=null?parseFloat(q.umidade):null,q.residuo_oleo!=null?parseFloat(q.residuo_oleo):null,q.impureza!=null?parseFloat(q.impureza):null,q.observacao||'',q.usuario_nome||''];})
     ];
     const ws=XLSX.utils.aoa_to_sheet(aoa);
     [0,1,2].forEach(r=>COLS.forEach((_,c)=>{const a=XLSX.utils.encode_cell({r,c});if(ws[a])ws[a].s=r===0?tSt:sSt;}));
     COLS.forEach((_,c)=>{const a=XLSX.utils.encode_cell({r:4,c});if(ws[a])ws[a].s=hSt;});
-    ws['!cols']=[{wch:12},{wch:10},{wch:22},{wch:6},{wch:9},{wch:18},{wch:14},{wch:12},{wch:16},{wch:12},{wch:36},{wch:22}];
-    ws['!views']=[{state:'frozen',ySplit:5}];ws['!autofilter']={ref:'A5:L5'};
-    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:11}},{s:{r:1,c:0},e:{r:1,c:11}},{s:{r:2,c:0},e:{r:2,c:11}}];
+    ws['!cols']=[{wch:12},{wch:10},{wch:22},{wch:14},{wch:6},{wch:9},{wch:18},{wch:14},{wch:12},{wch:16},{wch:12},{wch:36},{wch:22}];
+    ws['!views']=[{state:'frozen',ySplit:5}];ws['!autofilter']={ref:'A5:M5'};
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:12}},{s:{r:1,c:0},e:{r:1,c:12}},{s:{r:2,c:0},e:{r:2,c:12}}];
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Qualidade Linter');
     const tag=new Date().toISOString().slice(0,10).replace(/-/g,'');
     XLSX.writeFile(wb,`qualidade_linter_${tag}.xlsx`,{bookType:'xlsx',cellStyles:true});
