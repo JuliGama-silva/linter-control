@@ -1076,7 +1076,7 @@ function toast(msg,type='ok'){const t=document.getElementById('toast');t.textCon
 const getBL=bid=>lotes.filter(l=>l.bloco_id===bid);
 const totB=bid=>getBL(bid).reduce((s,l)=>s+l.fardos,0);
 const livB=bid=>{const b=blocos.find(x=>x.id===bid);return(b?b.capacidade:140)-totB(bid);};
-const mainP=bid=>{const ls=getBL(bid);return ls.length?ls[0].produto:null;};
+const mainP=bid=>{const ls=getBL(bid).filter(l=>l.fardos>0);return ls.length?ls[0].produto:null;};
 const findB=(rua,av)=>blocos.find(b=>b.rua===rua&&b.avenida===av);
 const isAdmin=()=>currentUser?.role==='admin';
 
@@ -1086,12 +1086,16 @@ async function loadBlocos(){
     const{data:bd}=await sb.from('blocos').select('*').order('id');
     const{data:ld}=await sb.from('lotes').select('*').order('entrada_em');
     blocos=bd||[];lotes=ld||[];
+    // Salva no IDB e no localStorage (duplo backup para offline)
     idbSave('idb_blocos',blocos).catch(e=>console.warn('[IDB] Erro ao salvar blocos:',e.message));
     idbSave('idb_lotes',lotes).catch(e=>console.warn('[IDB] Erro ao salvar lotes:',e.message));
+    try{localStorage.setItem('lc_blocos',JSON.stringify(blocos));localStorage.setItem('lc_lotes',JSON.stringify(lotes));}catch{}
   }catch(e){
-    console.warn('[OFFLINE] loadBlocos: fallback para IndexedDB.',e.message);
-    blocos=await idbGetAll('idb_blocos').catch(()=>[]);
-    lotes=await idbGetAll('idb_lotes').catch(()=>[]);
+    console.warn('[OFFLINE] loadBlocos: fallback para cache local.',e.message);
+    // Tenta localStorage primeiro (mais simples e confiável), depois IDB
+    const lb=localStorage.getItem('lc_blocos');const ll=localStorage.getItem('lc_lotes');
+    if(lb&&ll){blocos=JSON.parse(lb);lotes=JSON.parse(ll);console.log('[OFFLINE] Dados carregados do localStorage:',blocos.length,'blocos,',lotes.length,'lotes');}
+    else{blocos=await idbGetAll('idb_blocos').catch(()=>[]);lotes=await idbGetAll('idb_lotes').catch(()=>[]);console.log('[OFFLINE] Dados carregados do IndexedDB:',blocos.length,'blocos,',lotes.length,'lotes');}
   }
 }
 async function loadHistorico(){
@@ -1099,10 +1103,12 @@ async function loadHistorico(){
     const{data}=await sb.from('historico').select('*').order('quando',{ascending:false}).limit(300);
     historico=data||[];
     idbSave('idb_historico',historico).catch(e=>console.warn('[IDB] Erro ao salvar historico:',e.message));
+    try{localStorage.setItem('lc_historico',JSON.stringify(historico));}catch{}
   }catch(e){
-    console.warn('[OFFLINE] loadHistorico: fallback para IndexedDB.',e.message);
-    historico=await idbGetAll('idb_historico').catch(()=>[]);
-    historico.sort((a,b)=>new Date(b.quando)-new Date(a.quando));
+    console.warn('[OFFLINE] loadHistorico: fallback para cache local.',e.message);
+    const lh=localStorage.getItem('lc_historico');
+    if(lh){historico=JSON.parse(lh);historico.sort((a,b)=>new Date(b.quando)-new Date(a.quando));}
+    else{historico=await idbGetAll('idb_historico').catch(()=>[]);historico.sort((a,b)=>new Date(b.quando)-new Date(a.quando));}
   }
 }
 async function loadUsuarios(){
@@ -1307,7 +1313,7 @@ function renderPanelBody(b,livre){
 
   if(actionTab==='lotes'){
     if(!ls.length){body.innerHTML=`<div class="empty-msg">Bloco vazio.</div>`;return;}
-    body.innerHTML=ls.map(l=>{const st=ps(l.produto);const lastQ=qualidade.find(q=>q.lote===l.lote);const qChips=lastQ?renderQualIndicadores(lastQ):'<span class="ind-chip ind-na">Sem análise</span>';const qDate=lastQ?`<div class="hist-meta" style="margin-top:4px;">🔬 Análise: ${new Date(lastQ.criado_em).toLocaleDateString('pt-BR')}</div>`:'';const qProd=lastQ&&(lastQ.data_inicio_producao||lastQ.data_final_producao)?`<div class="hist-meta" style="margin-top:2px;color:var(--accent2);">🏭 Produção: ${lastQ.data_inicio_producao?new Date(lastQ.data_inicio_producao+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${lastQ.turno_inicio?' T'+lastQ.turno_inicio:''}  →  ${lastQ.data_final_producao?new Date(lastQ.data_final_producao+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${lastQ.turno_final?' T'+lastQ.turno_final:''}</div>`:'';return `<div class="lote-row" style="border-left:4px solid ${st.dot}"><div style="flex:1"><div class="lote-name">${l.lote}</div><div class="lote-meta" style="color:${st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div><div class="indicator-row">${qChips}</div>${qDate}${qProd}</div><div class="lote-qty">${l.fardos}</div></div>`}).join('');
+    body.innerHTML=ls.map(l=>{const st=ps(l.produto);const lastQ=qualidade.find(q=>q.lote===l.lote);const qChips=lastQ?renderQualIndicadores(lastQ):'<span class="ind-chip ind-na">Sem análise</span>';const qDate=lastQ?`<div class="hist-meta" style="margin-top:4px;">🔬 Análise: ${new Date(lastQ.criado_em).toLocaleDateString('pt-BR')}</div>`:'';const qProd=lastQ&&(lastQ.data_inicio_producao||lastQ.data_final_producao)?`<div class="hist-meta" style="margin-top:2px;color:var(--accent2);">🏭 Produção: ${lastQ.data_inicio_producao?new Date(lastQ.data_inicio_producao+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${lastQ.turno_inicio?' T'+lastQ.turno_inicio:''}  →  ${lastQ.data_final_producao?new Date(lastQ.data_final_producao+'T12:00:00').toLocaleDateString('pt-BR'):'—'}${lastQ.turno_final?' T'+lastQ.turno_final:''}</div>`:'';const vazioLabel=l.fardos===0?`<span class="badge" style="background:#37415130;color:var(--muted);border:1px solid var(--border);font-size:10px;padding:1px 7px;border-radius:5px;margin-left:6px;">VAZIO</span>`:'';return `<div class="lote-row" style="border-left:4px solid ${l.fardos===0?'var(--border)':st.dot};opacity:${l.fardos===0?'0.55':'1'}"><div style="flex:1"><div class="lote-name">${l.lote}${vazioLabel}</div><div class="lote-meta" style="color:${l.fardos===0?'var(--muted)':st.dot};font-weight:600">${l.produto}</div><div class="lote-meta">${new Date(l.entrada_em).toLocaleString('pt-BR')}</div><div class="indicator-row">${qChips}</div>${qDate}${qProd}</div><div class="lote-qty" style="color:${l.fardos===0?'var(--muted)':'inherit'}">${l.fardos}</div></div>`}).join('');
     return;
   }
 
@@ -1469,7 +1475,9 @@ function renderPanelBody(b,livre){
         document.getElementById('btn-saida').disabled=true;
         try{
           const saldoFinal=selObj.fardos-n;
-          if(n===selObj.fardos){await sb.from('lotes').delete().eq('id',selObj.id);}else{await sb.from('lotes').update({fardos:saldoFinal}).eq('id',selObj.id);}
+          // Mantém o lote com fardos=0 em vez de deletar:
+          // preserva histórico de qualidade e permite reabastecimento futuro
+          await sb.from('lotes').update({fardos:saldoFinal}).eq('id',selObj.id);
           const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',subtipo:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,saldo_apos:saldoFinal,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
           if(e1)throw e1;
           await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});
@@ -1823,10 +1831,10 @@ document.getElementById('btn-confirm-delete').onclick=async()=>{
     await sb.from('historico').delete().eq('id',deletingId);
     const lote=lotes.find(x=>x.lote===h.lote&&x.bloco_id===h.bloco_id);
     if(h.acao==='SAIDA'){
-      if(lote){await sb.from('lotes').update({fardos:lote.fardos+h.fardos}).eq('id',lote.id);}
+      if(lote){const novo=Math.max(0,lote.fardos-h.fardos);await sb.from('lotes').update({fardos:novo}).eq('id',lote.id);}
       else{await sb.from('lotes').insert({bloco_id:h.bloco_id,lote:h.lote,produto:h.produto,fardos:h.fardos});}
     }else if(h.acao==='ENTRADA'){
-      if(lote){const novo=lote.fardos-h.fardos;if(novo>0){await sb.from('lotes').update({fardos:novo}).eq('id',lote.id);}else{await sb.from('lotes').delete().eq('id',lote.id);}}
+      if(lote){const novo=lote.fardos-h.fardos;await sb.from('lotes').update({fardos:Math.max(0,novo)}).eq('id',lote.id);}
     }
     await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:dados,dados_novos:null,motivo});
     await loadBlocos();await loadHistorico();await loadAuditoria();
@@ -2372,7 +2380,11 @@ function renderQualDashboard(){
 function renderQualForm(){
   console.log('[QUALIDADE] Renderizando formulário Nova Análise...');
   const el=document.getElementById('qtab-form');
-  const lotesDisp=lotes.map(l=>{const b=blocos.find(x=>x.id===l.bloco_id);return{lote:l.lote,rua:b?.rua??'',av:String(b?.avenida??''),prod:l.produto,fardos:l.fardos};});
+  const lotesDisp=lotes.map(l=>{const b=blocos.find(x=>x.id===l.bloco_id);return{lote:l.lote,rua:b?.rua??'',av:String(b?.avenida??''),prod:l.produto,fardos:l.fardos,disponivel:l.fardos>0};});
+  const lotesAtivos=lotesDisp.filter(l=>l.disponivel);
+  const lotesVazios=lotesDisp.filter(l=>!l.disponivel);
+  const optAtivos=lotesAtivos.map(l=>`<option value="${l.lote}" data-rua="${l.rua}" data-av="${l.av}" data-prod="${l.prod}" data-fardos="${l.fardos}">${l.lote} — ${l.prod} (Rua ${l.rua} / Av ${l.av}) · ${l.fardos} fardos</option>`).join('');
+  const optVazios=lotesVazios.length?`<optgroup label="─── Indisponível (0 fardos) ───">`+lotesVazios.map(l=>`<option value="${l.lote}" data-rua="${l.rua}" data-av="${l.av}" data-prod="${l.prod}" data-fardos="0">${l.lote} — ${l.prod} (Rua ${l.rua} / Av ${l.av}) · VAZIO</option>`).join('')+`</optgroup>`:'';
   el.innerHTML=`<div class="panel">
     <div class="panel-title" style="margin-bottom:14px;">Nova análise de qualidade</div>
 
@@ -2382,7 +2394,7 @@ function renderQualForm(){
              placeholder="🔍 Digite o número do lote…" autocomplete="off"/>
       <select id="qf-lote" class="hist-input" style="width:100%">
         <option value="">— selecione após pesquisar —</option>
-        ${lotesDisp.map(l=>`<option value="${l.lote}" data-rua="${l.rua}" data-av="${l.av}" data-prod="${l.prod}" data-fardos="${l.fardos}">${l.lote} — ${l.prod} (Rua ${l.rua} / Av ${l.av})</option>`).join('')}
+        ${optAtivos}${optVazios}
       </select>
     </div>
 
