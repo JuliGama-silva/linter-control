@@ -1123,15 +1123,15 @@ async function loadUsuarios(){
   }
 }
 async function loadAuditoria(){
-  console.log('[AUDITORIA][DEBUG] Consultando tabela auditoria...');
-  const {data,error}=await sb.from('auditoria').select('*').order('criado_em',{ascending:false}).limit(200);
-  if(error){
-    console.error('[AUDITORIA][DEBUG] Erro Supabase ao consultar auditoria:',{message:error.message,code:error.code,details:error.details,hint:error.hint});
+  try{
+    const {data,error}=await sb.from('auditoria').select('*').order('criado_em',{ascending:false}).limit(200);
+    if(error){console.error('[AUDITORIA] Erro:',error.message);auditoria=[];return;}
+    auditoria=data||[];
+    console.log('[AUDITORIA] Registros carregados:',auditoria.length);
+  }catch(e){
+    console.warn('[OFFLINE] loadAuditoria falhou (sem conexão):',e.message);
     auditoria=[];
-    return;
   }
-  auditoria=data||[];
-  console.log('[AUDITORIA][DEBUG] Registros de auditoria carregados:',auditoria.length);
 }
 async function loadConfiguracoes(){
   try{
@@ -1233,7 +1233,13 @@ function _finalizarLogin(data){
   if(navigator.onLine){
     sb.from('auditoria').insert({acao:'LOGIN',tabela:'usuarios',registro_id:null,usuario_id:null,usuario_nome:data.nome,dados_antigos:null,dados_novos:null,motivo:'Login realizado com sucesso'}).then(({error})=>{if(error)console.error('[AUDITORIA] Falha ao registrar LOGIN:',error.message);}).catch(()=>{});
   }
-  loadAll().then(()=>showTab('mapa'));
+  // loadAll com fallback garantido: mesmo que falhe (offline), mostra o mapa com dados do cache
+  loadAll()
+    .then(()=>showTab('mapa'))
+    .catch(e=>{
+      console.warn('[OFFLINE] loadAll falhou, mostrando mapa com dados do cache:',e.message);
+      showTab('mapa');
+    });
 }
 
 function doLogout(){
@@ -1412,28 +1418,35 @@ function renderPanelBody(b,livre){
       btnE.disabled=true;
       try{
         // ── CHECAGEM DE SEGURANÇA NO BANCO ──
-        // Antes de inserir, confirma diretamente no Supabase (não na lista em memória)
-        // se já existe um lote com este número neste bloco. Isso elimina a duplicação
-        // mesmo que o cache local (`ls`) esteja desatualizado por qualquer motivo
-        // (sessão antiga, outra pessoa cadastrando ao mesmo tempo, etc.).
-        const {data:checagem,error:eCheck}=await sb.from('lotes').select('*').eq('bloco_id',b.id).ilike('lote',lote).limit(1);
+        // Busca TODOS os registros do lote neste bloco (sem limit) para lidar com duplicatas
+        const {data:checagem,error:eCheck}=await sb.from('lotes').select('*').eq('bloco_id',b.id).ilike('lote',lote);
         if(eCheck)throw eCheck;
-        const jaExisteNoBanco=checagem&&checagem.length?checagem[0]:null;
-        console.log('[ENTRADA][DEBUG] Checagem direta no banco antes do INSERT — lote já existe?',jaExisteNoBanco?'SIM, id='+jaExisteNoBanco.id+', fardos='+jaExisteNoBanco.fardos:'NÃO');
+        console.log('[ENTRADA][DEBUG] Checagem no banco — registros encontrados para',lote,':',checagem?.length||0);
 
-        if(jaExisteNoBanco){
-          // O banco confirma que o lote já existe — trata como complementação (UPDATE), nunca duplica.
-          const novoTotal=jaExisteNoBanco.fardos+n;
-          const {error:eUpd}=await sb.from('lotes').update({fardos:novoTotal}).eq('id',jaExisteNoBanco.id);
+        if(checagem&&checagem.length>0){
+          // Lote já existe (pode ter duplicatas) — consolida tudo num único registro
+          const registroPrincipal=checagem[0];
+          const totalAtual=checagem.reduce((s,r)=>s+r.fardos,0);
+
+          if(checagem.length>1){
+            // Tem duplicatas: apaga os extras e soma no principal
+            console.warn('[ENTRADA] Duplicatas detectadas para',lote,'— consolidando',checagem.length,'registros');
+            for(let i=1;i<checagem.length;i++){
+              await sb.from('lotes').delete().eq('id',checagem[i].id);
+            }
+          }
+
+          const novoTotal=totalAtual+n;
+          const {error:eUpd}=await sb.from('lotes').update({fardos:novoTotal}).eq('id',registroPrincipal.id);
           if(eUpd)throw eUpd;
-          const {error:e2}=await sb.from('historico').insert({acao:'ENTRADA',subtipo:'COMPLEMENTO',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:jaExisteNoBanco.lote,produto:jaExisteNoBanco.produto,fardos:n,saldo_apos:novoTotal,numero_nf:nf,observacao:obs||'Complementação de lote existente',usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
+          const {error:e2}=await sb.from('historico').insert({acao:'ENTRADA',subtipo:'COMPLEMENTO',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:registroPrincipal.lote,produto:registroPrincipal.produto,fardos:n,saldo_apos:novoTotal,numero_nf:nf,observacao:obs||'Complementação de lote existente',usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
           if(e2)throw e2;
-          await sb.from('logs_operacoes').insert({operacao:'COMPLEMENTO',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:jaExisteNoBanco.lote,produto:jaExisteNoBanco.produto,fardos:n,status:'SUCESSO'});
+          await sb.from('logs_operacoes').insert({operacao:'COMPLEMENTO',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:registroPrincipal.lote,produto:registroPrincipal.produto,fardos:n,status:'SUCESSO'});
           try{
-            await sb.from('auditoria').insert({acao:'COMPLEMENTAÇÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{lote:jaExisteNoBanco.lote,fardos:jaExisteNoBanco.fardos},dados_novos:{lote:jaExisteNoBanco.lote,fardos_adicionados:n,saldo_final:novoTotal},motivo:`Complementação (detectada na checagem de segurança) em Rua ${b.rua} / Avenida ${b.avenida}`});
-          }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar COMPLEMENTAÇÃO:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
+            await sb.from('auditoria').insert({acao:'COMPLEMENTAÇÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{lote:registroPrincipal.lote,fardos:totalAtual},dados_novos:{lote:registroPrincipal.lote,fardos_adicionados:n,saldo_final:novoTotal},motivo:`Complementação em Rua ${b.rua} / Avenida ${b.avenida}`});
+          }catch(auditErr){console.error('[AUDITORIA] Falha ao registrar COMPLEMENTAÇÃO:',auditErr.message);}
           await loadBlocos();await loadHistorico();
-          toast(`✅ Lote ${jaExisteNoBanco.lote} complementado! Saldo: ${novoTotal}/${b.capacidade}`);
+          toast(`✅ Lote ${registroPrincipal.lote} complementado! Saldo: ${novoTotal}/${b.capacidade}`);
           actionTab='lotes';renderMapa();renderBlocoPanel();
           return;
         }
