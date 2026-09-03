@@ -957,9 +957,10 @@
 <div id="modal-edit" class="modal">
   <div class="modal-box">
     <div class="modal-title">Editar movimentação</div>
+    <div class="ff"><label>Número do Lote</label><input id="edit-lote" placeholder="Ex: L001, PLU-84…" class="hist-input" style="width:100%"></div>
     <div class="ff"><label>Observação</label><textarea id="edit-obs" placeholder="Atualizar observação…"></textarea></div>
     <div class="ff"><label>Número NF</label><input id="edit-nf" placeholder="NF da movimentação"></div>
-    <p style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4;">A quantidade não é editável aqui para preservar a consistência do saldo. Para corrigir a quantidade, exclua a movimentação (o estoque é ajustado automaticamente) e registre novamente.</p>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4;">Ao alterar o número do lote, o nome é atualizado no estoque e no histórico. A quantidade não é editável para preservar a consistência do saldo.</p>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-green btn-full" id="btn-save-edit">Salvar edição</button>
       <button class="btn btn-ghost btn-full" id="btn-cancel-edit">Cancelar</button>
@@ -1793,6 +1794,7 @@ function openEditModal(id){
   editingId=id;
   const h=historico.find(x=>x.id===id);
   if(!h)return;
+  document.getElementById('edit-lote').value=h.lote||'';
   document.getElementById('edit-obs').value=h.observacao||'';
   document.getElementById('edit-nf').value=h.numero_nf||'';
   document.getElementById('modal-edit').classList.add('show');
@@ -1804,21 +1806,31 @@ if(btnSaveEdit){
 }
 
 async function saveEditHandler(){
+  const loteNovo=(document.getElementById('edit-lote').value.trim());
   const obs=document.getElementById('edit-obs').value.trim()||null;
   const nf=document.getElementById('edit-nf').value.trim()||null;
   if(!editingId)return;
+  if(!loteNovo)return toast('O número do lote não pode ficar vazio.','err');
   if(!isAdmin())return toast('Apenas administradores podem editar.','err');
   const antigo=historico.find(x=>x.id===editingId);
   const btn=document.getElementById('btn-save-edit');
   if(btn)btn.disabled=true;
   try{
-    const {error}=await sb.from('historico').update({observacao:obs,numero_nf:nf,editado_em:new Date().toISOString()}).eq('id',editingId);
+    // Se o nome do lote mudou, atualiza também na tabela lotes
+    if(antigo&&loteNovo!==antigo.lote){
+      const loteReg=lotes.find(l=>l.lote===antigo.lote&&l.bloco_id===antigo.bloco_id);
+      if(loteReg){
+        await sb.from('lotes').update({lote:loteNovo}).eq('id',loteReg.id);
+      }
+    }
+    const {error}=await sb.from('historico').update({lote:loteNovo,observacao:obs,numero_nf:nf,editado_em:new Date().toISOString()}).eq('id',editingId);
     if(error){toast('Erro: '+error.message,'err');return;}
     if(antigo){
-      await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{observacao:antigo.observacao,numero_nf:antigo.numero_nf},dados_novos:{observacao:obs,numero_nf:nf},motivo:null});
+      await sb.from('auditoria').insert({acao:'EDIÇÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{lote:antigo.lote,observacao:antigo.observacao,numero_nf:antigo.numero_nf},dados_novos:{lote:loteNovo,observacao:obs,numero_nf:nf},motivo:null});
     }
-    await loadHistorico();await loadAuditoria();
-    toast('✅ Movimentação editada e registrada na auditoria!');
+    await loadBlocos();await loadHistorico();await loadAuditoria();
+    renderMapa();
+    toast('✅ Movimentação editada!');
     document.getElementById('modal-edit').classList.remove('show');
     editingId=null;
     renderHistList();
@@ -1844,16 +1856,19 @@ document.getElementById('btn-confirm-delete').onclick=async()=>{
     await sb.from('historico').delete().eq('id',deletingId);
     const lote=lotes.find(x=>x.lote===h.lote&&x.bloco_id===h.bloco_id);
     if(h.acao==='SAIDA'){
-      if(lote){const novo=Math.max(0,lote.fardos-h.fardos);await sb.from('lotes').update({fardos:novo}).eq('id',lote.id);}
+      // Reverter saída = devolver os fardos ao lote
+      if(lote){await sb.from('lotes').update({fardos:lote.fardos+h.fardos}).eq('id',lote.id);}
       else{await sb.from('lotes').insert({bloco_id:h.bloco_id,lote:h.lote,produto:h.produto,fardos:h.fardos});}
     }else if(h.acao==='ENTRADA'){
-      if(lote){const novo=lote.fardos-h.fardos;await sb.from('lotes').update({fardos:Math.max(0,novo)}).eq('id',lote.id);}
+      // Reverter entrada = remover os fardos que foram adicionados
+      if(lote){await sb.from('lotes').update({fardos:Math.max(0,lote.fardos-h.fardos)}).eq('id',lote.id);}
     }
     await sb.from('auditoria').insert({acao:'EXCLUSÃO',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:dados,dados_novos:null,motivo});
     await loadBlocos();await loadHistorico();await loadAuditoria();
     toast('✅ Movimentação excluída e estoque ajustado!');
     document.getElementById('modal-delete').classList.remove('show');
     deletingId=null;
+    renderMapa(); // atualiza o mapa visualmente após corrigir o estoque
     renderHistList();
   }catch(e){toast('Erro ao excluir: '+e.message,'err');}
   finally{document.getElementById('btn-confirm-delete').disabled=false;}
