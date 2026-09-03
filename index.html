@@ -1351,9 +1351,12 @@ function renderPanelBody(b,livre){
       return achado;
     }
     function atualizarModo(){
-      const existente=loteExistente();
+      const v=loteInput.value.trim().toUpperCase();
+      const existente=loteExistente(); // lote já neste bloco → modo complementar
+
       if(existente){
-        const espaco=livre; // livre já desconta o total do bloco, incluindo este lote
+        // ── Lote encontrado NESTE bloco: modo complementar ──
+        const espaco=livre;
         infoBox.innerHTML=`<div class="complement-box"><div class="cx-title">🔄 Lote existente detectado — modo Complementar</div>
           <div class="cx-grid">
             <div><span>Produto</span><span>${existente.produto}</span></div>
@@ -1365,11 +1368,33 @@ function renderPanelBody(b,livre){
         </div>`;
         formNormal.classList.add('hidden');
         btnE.textContent='➕ Complementar lote';
-      }else{
-        infoBox.innerHTML='';
-        formNormal.classList.remove('hidden');
-        btnE.textContent='📥 Registrar Entrada';
+        btnE.disabled=false;
+        return;
       }
+
+      if(v){
+        // ── Verificar se existe em OUTRO bloco (regra: mesmo lote não pode ter 2 localizações) ──
+        const emOutroBloco=lotes.filter(l=>String(l.lote).trim().toUpperCase()===v&&l.bloco_id!==b.id&&l.fardos>0);
+        if(emOutroBloco.length>0){
+          const outro=blocos.find(x=>x.id===emOutroBloco[0].bloco_id);
+          const loc=outro?`Rua ${outro.rua} / Av ${outro.avenida}`:'outro bloco';
+          infoBox.innerHTML=`<div style="background:rgba(127,29,29,.25);border:1px solid #FCA5A5;border-radius:10px;padding:12px;color:#FCA5A5;font-size:12px;line-height:1.6;">
+            ❌ <strong>Lote "${v}" já existe em ${loc}.</strong><br>
+            O mesmo lote não pode ser cadastrado em duas localizações diferentes.<br>
+            Para adicionar mais fardos, vá até o bloco original e use a função Complementar.
+          </div>`;
+          formNormal.classList.add('hidden');
+          btnE.textContent='🚫 Lote em outro bloco';
+          btnE.disabled=true;
+          return;
+        }
+      }
+
+      // ── Nenhum lote encontrado: modo entrada nova ──
+      infoBox.innerHTML='';
+      formNormal.classList.remove('hidden');
+      btnE.textContent='📥 Registrar Entrada';
+      btnE.disabled=false;
     }
     loteInput.addEventListener('input',atualizarModo);
     atualizarModo();
@@ -1419,9 +1444,20 @@ function renderPanelBody(b,livre){
       btnE.disabled=true;
       try{
         // ── CHECAGEM DE SEGURANÇA NO BANCO ──
-        // Busca TODOS os registros do lote neste bloco (sem limit) para lidar com duplicatas
+        // 1. Verifica no bloco atual (detecta duplicatas locais)
         const {data:checagem,error:eCheck}=await sb.from('lotes').select('*').eq('bloco_id',b.id).ilike('lote',lote);
         if(eCheck)throw eCheck;
+
+        // 2. Verifica em TODOS os outros blocos (proíbe mesmo lote em localizações diferentes)
+        const {data:globalLotes}=await sb.from('lotes').select('id,bloco_id,lote,fardos').ilike('lote',lote);
+        const emOutroBloco=(globalLotes||[]).filter(r=>r.bloco_id!==b.id&&r.fardos>0);
+        if(emOutroBloco.length>0){
+          const outro=blocos.find(x=>x.id===emOutroBloco[0].bloco_id);
+          const loc=outro?`Rua ${outro.rua} / Av ${outro.avenida}`:'outro bloco';
+          btnE.disabled=false;
+          return toast(`❌ Lote "${lote}" já existe em ${loc}. O mesmo lote não pode estar em duas localizações. Vá até o bloco original para complementar.`,'err');
+        }
+
         console.log('[ENTRADA][DEBUG] Checagem no banco — registros encontrados para',lote,':',checagem?.length||0);
 
         if(checagem&&checagem.length>0){
