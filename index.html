@@ -1525,24 +1525,27 @@ function renderPanelBody(b,livre){
         document.getElementById('btn-saida').disabled=true;
         try{
           const saldoFinal=selObj.fardos-n;
+          console.log('[SAÍDA][DEBUG] selObj.id =',selObj.id,'| tipo:',typeof selObj.id,'| saldoFinal:',saldoFinal);
           if(saldoFinal<=0){
-            // ── SAÍDA TOTAL: apaga do banco e da memória ──
-            const {error:eUpd}=await sb.from('lotes').delete().eq('id',selObj.id);
+            // Verifica o que existe no banco ANTES de apagar
+            const {data:antes}=await sb.from('lotes').select('id,lote,fardos').eq('id',selObj.id);
+            console.log('[SAÍDA][DEBUG] Registro no banco ANTES do delete:',antes);
+            const {error:eUpd,data:delData}=await sb.from('lotes').delete().eq('id',selObj.id).select();
+            console.log('[SAÍDA][DEBUG] Resultado do delete:',{error:eUpd,deletedRows:delData?.length});
             if(eUpd)throw eUpd;
+            // Verifica o que sobrou no banco DEPOIS
+            const {data:depois}=await sb.from('lotes').select('id,lote,fardos').eq('id',selObj.id);
+            console.log('[SAÍDA][DEBUG] Registro no banco DEPOIS do delete:',depois);
             // Remove da memória imediatamente
             lotes=lotes.filter(l=>String(l.id)!==String(selObj.id));
           }else{
-            // ── SAÍDA PARCIAL: atualiza quantidade ──
             const {error:eUpd}=await sb.from('lotes').update({fardos:saldoFinal}).eq('id',selObj.id);
             if(eUpd)throw eUpd;
-            // Atualiza na memória imediatamente
             const idx=lotes.findIndex(l=>String(l.id)===String(selObj.id));
             if(idx>=0)lotes[idx]={...lotes[idx],fardos:saldoFinal};
           }
-          // Atualiza o localStorage AGORA com os dados corretos
-          // (evita que o loadBlocos restaure o dado antigo do cache)
+          // Atualiza o localStorage com dados corretos
           try{localStorage.setItem('lc_lotes',JSON.stringify(lotes));}catch{}
-          // Redesenha o mapa imediatamente
           renderMapa();
           const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',subtipo:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,saldo_apos:saldoFinal,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
           if(e1)throw e1;
