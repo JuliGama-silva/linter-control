@@ -1525,10 +1525,16 @@ function renderPanelBody(b,livre){
         document.getElementById('btn-saida').disabled=true;
         try{
           const saldoFinal=selObj.fardos-n;
-          // Mantém o lote com fardos=0 em vez de deletar:
-          // preserva histórico de qualidade e permite reabastecimento futuro
-          const {error:eUpd}=await sb.from('lotes').update({fardos:saldoFinal}).eq('id',selObj.id);
-          if(eUpd)throw eUpd;
+          // Saída total: apaga o lote da tabela lotes → mapa fica vazio
+          // Saída parcial: atualiza a quantidade
+          // A qualidade fica em qualidade_linter (tabela separada), não é afetada
+          if(saldoFinal<=0){
+            const {error:eUpd}=await sb.from('lotes').delete().eq('id',selObj.id);
+            if(eUpd)throw eUpd;
+          }else{
+            const {error:eUpd}=await sb.from('lotes').update({fardos:saldoFinal}).eq('id',selObj.id);
+            if(eUpd)throw eUpd;
+          }
           const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',subtipo:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,saldo_apos:saldoFinal,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
           if(e1)throw e1;
           await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});
