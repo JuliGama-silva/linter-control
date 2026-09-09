@@ -1525,23 +1525,29 @@ function renderPanelBody(b,livre){
         document.getElementById('btn-saida').disabled=true;
         try{
           const saldoFinal=selObj.fardos-n;
-          // Saída total: apaga o lote da tabela lotes → mapa fica vazio
-          // Saída parcial: atualiza a quantidade
-          // A qualidade fica em qualidade_linter (tabela separada), não é afetada
+          // Saída total → apaga do banco (mapa fica vazio)
+          // Saída parcial → atualiza quantidade
           if(saldoFinal<=0){
             const {error:eUpd}=await sb.from('lotes').delete().eq('id',selObj.id);
             if(eUpd)throw eUpd;
+            // Atualiza memória imediatamente — sem depender do loadBlocos
+            lotes=lotes.filter(l=>String(l.id)!==String(selObj.id));
           }else{
             const {error:eUpd}=await sb.from('lotes').update({fardos:saldoFinal}).eq('id',selObj.id);
             if(eUpd)throw eUpd;
+            // Atualiza memória imediatamente
+            const idx=lotes.findIndex(l=>String(l.id)===String(selObj.id));
+            if(idx>=0)lotes[idx]={...lotes[idx],fardos:saldoFinal};
           }
+          // Redesenha o mapa IMEDIATAMENTE com os dados já corrigidos em memória
+          renderMapa();
           const {error:e1}=await sb.from('historico').insert({acao:'SAIDA',subtipo:'SAIDA',bloco_id:b.id,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,saldo_apos:saldoFinal,numero_nf:nf,observacao:obs,usuario_nome:currentUser.nome,usuario_id:currentUser.id,quando:new Date().toISOString()});
           if(e1)throw e1;
           await sb.from('logs_operacoes').insert({operacao:'SAIDA',usuario_id:currentUser.id,usuario_nome:currentUser.nome,rua:b.rua,avenida:b.avenida,lote:selObj.lote,produto:selObj.produto,fardos:n,status:'SUCESSO'});
-          // Registro de auditoria — não bloqueante: a saída já foi concluída com sucesso acima
           try{
             await sb.from('auditoria').insert({acao:'SAÍDA',tabela:'historico',registro_id:null,usuario_id:null,usuario_nome:currentUser.nome,dados_antigos:{lote:selObj.lote,rua:b.rua,avenida:b.avenida,fardos:selObj.fardos},dados_novos:{lote:selObj.lote,rua:b.rua,avenida:b.avenida,fardos_retirados:n,saldo_final:saldoFinal},motivo:`Saída em Rua ${b.rua} / Avenida ${b.avenida}`});
-          }catch(auditErr){console.error('[AUDITORIA][DEBUG] Falha ao registrar SAÍDA:',{message:auditErr.message,code:auditErr.code,details:auditErr.details,hint:auditErr.hint});}
+          }catch(auditErr){console.error('[AUDITORIA] Falha ao registrar SAÍDA:',auditErr.message);}
+          // Recarrega do servidor para confirmar e sincronizar localStorage
           await loadBlocos();await loadHistorico();
           toast(`✅ Saída de ${n} fardos registrada!`);
           selectedLote=null;actionTab='lotes';renderMapa();renderBlocoPanel();
